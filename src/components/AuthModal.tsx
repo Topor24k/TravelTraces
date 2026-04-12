@@ -6,9 +6,10 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialMode?: "signin" | "signup";
+  onLogin?: () => void;
 }
 
-export const AuthModal = ({ isOpen, onClose, initialMode = "signin" }: AuthModalProps) => {
+export const AuthModal = ({ isOpen, onClose, initialMode = "signin", onLogin }: AuthModalProps) => {
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -56,7 +57,7 @@ export const AuthModal = ({ isOpen, onClose, initialMode = "signin" }: AuthModal
               </p>
             </div>
 
-            <form id="auth-modal-form" className="auth-modal-form-element flex flex-col gap-4 sm:gap-5" onSubmit={(e) => e.preventDefault()}>
+            <form id="auth-modal-form" className="auth-modal-form-element flex flex-col gap-4 sm:gap-5" onSubmit={(e) => { e.preventDefault(); if (onLogin) onLogin(); }}>
               {mode === "signup" && (
                 <>
                   <div className="form-field flex flex-col gap-1.5 sm:gap-2">
