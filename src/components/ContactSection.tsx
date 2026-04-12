@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { MapPin } from "lucide-react";
+import { Heart } from "lucide-react";
 
 export const ContactSection = () => {
   return (
@@ -71,7 +71,7 @@ export const ContactSection = () => {
           <div id="support-actions" className="support-actions-group">
             <p id="support-quote" className="support-quote">"Helping us document all 7,641 islands, one story at a time."</p>
             <button id="donate-btn" className="donate-button">
-              <MapPin className="donate-icon" />
+              <Heart className="donate-icon" />
               You Can Donate
             </button>
           </div>
