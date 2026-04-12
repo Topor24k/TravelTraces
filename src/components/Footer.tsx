@@ -1,4 +1,11 @@
-import { MapPin } from "lucide-react";
+import { Facebook, Instagram, Twitter, MessageCircle } from "lucide-react";
+
+const socialIcons = {
+  Facebook: Facebook,
+  Instagram: Instagram,
+  Twitter: Twitter,
+  Discord: MessageCircle
+};
 
 export const Footer = () => (
   <footer id="main-footer" className="footer-wrapper">
@@ -13,13 +20,13 @@ export const Footer = () => (
             Documenting the beauty of the 7,641 islands of the Philippines, one story at a time. Join our community of explorers.
           </p>
           <div id="footer-social-links" className="footer-social-group flex gap-4">
-            {["Facebook", "Instagram", "Twitter", "Discord"].map((social) => (
+            {Object.entries(socialIcons).map(([social, Icon]) => (
               <div 
                 id={`footer-social-${social.toLowerCase()}`}
                 key={social}
                 className="footer-social-icon-wrapper group"
               >
-                <MapPin className="social-icon w-5 h-5 group-hover:scale-110 transition-transform" />
+                <Icon className="social-icon w-5 h-5 group-hover:scale-110 transition-transform" />
               </div>
             ))}
           </div>
