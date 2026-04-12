@@ -397,7 +397,7 @@ html {
 
 /* FeaturedPlaces Components */
 .featured-places-section {
-  @apply w-full min-h-[931px] bg-white py-[66px] px-[63px] relative;
+  @apply w-full min-h-[auto] bg-white py-[66px] px-[63px] relative lg:min-h-[900px];
 }
 
 .featured-places-container {
