@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Search, MapPin, ChevronRight } from "lucide-react";
+import { Map, MapPin, Share2 } from "lucide-react";
 
 export const HowItWorks = () => {
   const steps = [
@@ -7,7 +7,7 @@ export const HowItWorks = () => {
       number: "01", 
       title: "Explore the Map", 
       description: "Navigate through our interactive 7,641-island map. Discover hidden gems and popular destinations across Luzon, Visayas, and Mindanao.",
-      icon: <Search className="w-10 h-10" />
+      icon: <Map className="w-10 h-10" />
     },
     { 
       number: "02", 
@@ -19,7 +19,7 @@ export const HowItWorks = () => {
       number: "03", 
       title: "Share Your Trace", 
       description: "Upload photos, write your story, and share your 'trace' with a community of explorers. Inspire others to follow in your footsteps.",
-      icon: <ChevronRight className="w-10 h-10" />
+      icon: <Share2 className="w-10 h-10" />
     }
   ];
 
