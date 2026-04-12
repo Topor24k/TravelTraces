@@ -1,22 +1,22 @@
 import { motion } from "motion/react";
-import { Search, MapPin, User } from "lucide-react";
+import { Users, Compass, Landmark } from "lucide-react";
 
 export const About = () => {
   const pillars = [
     {
       title: "Community Driven",
       description: "Built by travelers, for travelers. Every pin and story is a contribution to a collective map of our islands.",
-      icon: <User className="w-8 h-8" />
+      icon: <Users className="w-8 h-8" />
     },
     {
       title: "Authentic Discovery",
       description: "Find real experiences beyond the tourist traps. Discover hidden gems shared by locals and seasoned explorers.",
-      icon: <Search className="w-8 h-8" />
+      icon: <Compass className="w-8 h-8" />
     },
     {
       title: "Digital Heritage",
       description: "Documenting our travels today creates a digital legacy of the Philippines' beauty for future generations.",
-      icon: <MapPin className="w-8 h-8" />
+      icon: <Landmark className="w-8 h-8" />
     }
   ];
 
@@ -38,7 +38,7 @@ export const About = () => {
                 viewport={{ once: true }}
                 className="about-subtitle"
               >
-                Our Story
+                About TravelTraces
               </motion.span>
               <motion.h2 
                 id="about-main-title"
@@ -120,8 +120,6 @@ export const About = () => {
                 referrerPolicy="no-referrer"
               />
               <div id="about-image-overlay" className="about-image-overlay">
-                <span className="about-image-location">Albay, Philippines</span>
-                <span className="about-image-author">Documented by @kayeen_c</span>
               </div>
             </motion.div>
 
