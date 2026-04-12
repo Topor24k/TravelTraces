@@ -1,12 +1,12 @@
 import { motion } from "motion/react";
-import { MapPin } from "lucide-react";
+import { Facebook, MessageCircle, Instagram, Twitter } from "lucide-react";
 
 export const CommunitySection = () => {
   const socials = [
-    { name: "Facebook", url: "#" },
-    { name: "Discord", url: "#" },
-    { name: "Instagram", url: "#" },
-    { name: "Twitter", url: "#" },
+    { name: "Facebook", url: "#", icon: Facebook },
+    { name: "Discord", url: "#", icon: MessageCircle },
+    { name: "Instagram", url: "#", icon: Instagram },
+    { name: "Twitter", url: "#", icon: Twitter },
   ];
 
   return (
@@ -26,19 +26,22 @@ export const CommunitySection = () => {
         </div>
 
         <div id="community-socials-grid" className="community-socials-grid">
-          {socials.map((social) => (
-            <a 
-              id={`community-social-${social.name.toLowerCase()}`}
-              key={social.name}
-              href={social.url}
-              className="community-social-card group"
-            >
-              <div className="social-icon-wrapper">
-                <MapPin className="social-icon w-8 h-8" />
-              </div>
-              <span className="social-name">{social.name}</span>
-            </a>
-          ))}
+          {socials.map((social) => {
+            const Icon = social.icon;
+            return (
+              <a 
+                id={`community-social-${social.name.toLowerCase()}`}
+                key={social.name}
+                href={social.url}
+                className="community-social-card group"
+              >
+                <div className="social-icon-wrapper">
+                  <Icon className="social-icon w-8 h-8" />
+                </div>
+                <span className="social-name">{social.name}</span>
+              </a>
+            );
+          })}
         </div>
         
         <button id="community-join-btn" className="community-join-button">
