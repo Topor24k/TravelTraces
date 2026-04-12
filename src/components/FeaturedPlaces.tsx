@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 
-export const FeaturedPlaces = () => {
+export const FeaturedPlaces = ({ onAuthRequired }: { onAuthRequired?: () => void }) => {
   const [startIndex, setStartIndex] = useState(0);
   
   const allPlaces = [
@@ -27,7 +27,7 @@ export const FeaturedPlaces = () => {
   const visiblePlaces = allPlaces.slice(startIndex, startIndex + 4);
 
   return (
-    <section id="explore" className="featured-places-section">
+    <section id="explore" className="featured-places-section !py-10">
       <div id="featured-places-container" className="featured-places-container">
         <div id="featured-places-header" className="featured-places-header-group">
           <h2 id="featured-places-title" className="featured-places-title">Featured Top Places</h2>
@@ -51,6 +51,7 @@ export const FeaturedPlaces = () => {
                 <motion.div 
                   id={`featured-place-${place.name.toLowerCase().replace(/\s+/g, '-')}`}
                   key={place.name}
+                  onClick={onAuthRequired}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
@@ -84,7 +85,7 @@ export const FeaturedPlaces = () => {
         </div>
 
         <div id="featured-places-footer" className="featured-places-footer">
-          <button id="share-travel-btn" className="share-travel-button">
+          <button id="share-travel-btn" className="share-travel-button" onClick={onAuthRequired}>
             Share Your Travel
           </button>
         </div>
