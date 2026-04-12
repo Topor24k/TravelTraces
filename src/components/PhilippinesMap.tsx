@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 
@@ -46,24 +47,17 @@ export const PhilippinesMap = ({ onRegionClick, className, id }: PhilippinesMapP
               newPath.style.transform = "scale(1.005)";
               const regionName = path.getAttribute("name") || path.getAttribute("id") || path.getAttribute("title") || `Region ${index + 1}`;
               
-              const rect = newPath.getBoundingClientRect();
-              const centerX = rect.left + rect.width / 2;
-              const centerY = rect.top + rect.height / 2;
-              
-              // Determine which side to show the tooltip on
-              // If the center of the region is in the right half of the screen, show on the left
-              const side = centerX > window.innerWidth / 2 ? 'left' : 'right';
-              
-              setTooltipPos({ 
-                x: side === 'right' ? rect.right + 15 : rect.left - 15,
-                y: centerY,
-                side
-              });
               setHoveredRegion(regionName);
             });
 
-            newPath.addEventListener("mousemove", () => {
-              // No longer needed as we use fixed position based on rect
+            newPath.addEventListener("mousemove", (e) => {
+              const side = e.clientX > window.innerWidth / 2 ? 'left' : 'right';
+              
+              setTooltipPos({ 
+                x: side === 'right' ? e.clientX + 15 : e.clientX - 15,
+                y: e.clientY,
+                side
+              });
             });
             
             newPath.addEventListener("mouseleave", () => {
@@ -74,7 +68,8 @@ export const PhilippinesMap = ({ onRegionClick, className, id }: PhilippinesMapP
             
             newPath.addEventListener("click", () => {
               if (onRegionClick) {
-                onRegionClick(`Region ${index + 1}`);
+                const regionName = path.getAttribute("name") || path.getAttribute("id") || path.getAttribute("title") || `Region ${index + 1}`;
+                onRegionClick(regionName);
               }
             });
             
@@ -97,32 +92,35 @@ export const PhilippinesMap = ({ onRegionClick, className, id }: PhilippinesMapP
         className="philippines-map-svg"
       />
       
-      <AnimatePresence>
-        {hoveredRegion && (
-          <motion.div
-            id="map-tooltip-wrapper"
-            initial={{ opacity: 0, x: tooltipPos.side === 'right' ? -10 : 10, y: '-50%' }}
-            animate={{ opacity: 1, x: 0, y: '-50%' }}
-            exit={{ opacity: 0, x: tooltipPos.side === 'right' ? -10 : 10, y: '-50%' }}
-            className="map-tooltip-motion-div"
-            style={{ 
-              position: 'fixed', 
-              left: tooltipPos.side === 'right' ? tooltipPos.x : 'auto',
-              right: tooltipPos.side === 'left' ? window.innerWidth - tooltipPos.x : 'auto',
-              top: tooltipPos.y,
-              pointerEvents: 'none',
-              zIndex: 9999,
-              display: 'flex',
-              alignItems: 'center',
-              flexDirection: tooltipPos.side === 'right' ? 'row' : 'row-reverse'
-            }}
-          >
-            <div id="map-tooltip-content" className="map-tooltip-content">
-              {hoveredRegion}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {hoveredRegion && (
+            <motion.div
+              id="map-tooltip-wrapper"
+              initial={{ opacity: 0, x: tooltipPos.side === 'right' ? -10 : 10, y: '-50%' }}
+              animate={{ opacity: 1, x: 0, y: '-50%' }}
+              exit={{ opacity: 0, x: tooltipPos.side === 'right' ? -10 : 10, y: '-50%' }}
+              className="map-tooltip-motion-div"
+              style={{ 
+                position: 'fixed', 
+                left: tooltipPos.side === 'right' ? tooltipPos.x : 'auto',
+                right: tooltipPos.side === 'left' ? window.innerWidth - tooltipPos.x : 'auto',
+                top: Math.max(30, Math.min(window.innerHeight - 30, tooltipPos.y)),
+                pointerEvents: 'none',
+                zIndex: 9999,
+                display: 'flex',
+                alignItems: 'center',
+                flexDirection: tooltipPos.side === 'right' ? 'row' : 'row-reverse'
+              }}
+            >
+              <div id="map-tooltip-content" className="map-tooltip-content">
+                {hoveredRegion}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };
