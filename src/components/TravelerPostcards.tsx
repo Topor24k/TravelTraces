@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 
-export const TravelerPostcards = () => {
+export const TravelerPostcards = ({ onAuthRequired }: { onAuthRequired?: () => void }) => {
   const postcards = [
     { 
       image: "/images/Cloud%209%20Siargao.jpg", 
@@ -29,7 +29,7 @@ export const TravelerPostcards = () => {
   ];
 
   return (
-    <section id="stories" className="traveler-postcards-section">
+    <section id="stories" className="traveler-postcards-section !pt-0 !pb-20">
       <div id="postcards-container" className="traveler-postcards-container">
         <div id="postcards-header" className="traveler-postcards-header">
           <h2 id="postcards-title" className="traveler-postcards-title">Traveler Postcards</h2>
@@ -43,6 +43,7 @@ export const TravelerPostcards = () => {
             <motion.div 
               id={`postcard-${index}`}
               key={index}
+              onClick={onAuthRequired}
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
@@ -68,7 +69,7 @@ export const TravelerPostcards = () => {
         </div>
 
         <div id="postcards-footer" className="traveler-postcards-footer">
-          <button id="view-all-stories-btn" className="view-all-stories-button">
+          <button id="view-all-stories-btn" className="view-all-stories-button" onClick={onAuthRequired}>
             View All Stories
           </button>
         </div>
