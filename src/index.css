@@ -1,6 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Limelight&family=Life+Savers:wght@400;700;800&family=Lisu+Bosa:wght@400;700&display=swap');
 @import "tailwindcss";
 
+html {
+  scroll-behavior: smooth;
+}
+
 @theme {
   --font-limelight: "Limelight", cursive;
   --font-life-savers: "Life Savers", system-ui;
@@ -227,15 +231,15 @@
 }
 
 .hero-map-container {
-  @apply absolute right-[-180px] top-[-250px] w-[1000px] h-[1200px] pointer-events-none lg:pointer-events-auto z-[-1] lg:z-0;
+  @apply absolute right-[-30%] sm:right-[-25%] lg:right-[-15%] top-[-15%] lg:top-[-5%] w-full lg:w-[65%] h-full flex justify-end items-center pointer-events-none lg:pointer-events-auto z-0 opacity-20 lg:opacity-100 py-10;
 }
 
 .hero-map-motion-wrapper {
-  @apply w-full h-full;
+  @apply w-full h-full flex items-center justify-center;
 }
 
 .hero-map-component {
-  @apply w-full h-full drop-shadow-2xl;
+  @apply w-full h-full max-h-[105vh] drop-shadow-2xl scale-[1.35];
 }
 
 .region-notification {
