@@ -73,10 +73,19 @@ export const Header = ({ onJoinClick }: HeaderProps) => {
                     id={`nav-link-${link.id}`}
                     key={link.id}
                     href={link.href} 
-                    className={`nav-link-item group ${activeSection === link.id ? 'text-black font-bold' : 'text-gray-500 hover:text-black'}`}
+                    onClick={() => setActiveSection(link.id)}
+                    className={`nav-link-item group relative ${activeSection === link.id ? 'text-black font-bold' : 'text-gray-500 hover:text-black'}`}
                   >
                     {link.name}
-                    <span className={`nav-link-underline ${activeSection === link.id ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                    {activeSection === link.id ? (
+                      <motion.div 
+                        layoutId="active-nav-indicator"
+                        className="absolute -bottom-1 left-0 h-[2px] bg-black w-full"
+                        transition={{ type: "spring", bounce: 0.25, duration: 0.6 }}
+                      />
+                    ) : (
+                      <span className="absolute -bottom-1 left-0 h-[2px] bg-black w-0 group-hover:w-full opacity-0 group-hover:opacity-30 transition-all duration-300"></span>
+                    )}
                   </a>
                 ))}
               </motion.nav>
