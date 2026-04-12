@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { PhilippinesMap } from "./PhilippinesMap";
 
-export const Hero = () => {
+export const Hero = ({ onAuthRequired }: { onAuthRequired?: () => void }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   
   const slides = [
@@ -116,6 +116,10 @@ export const Hero = () => {
               id="hero-philippines-map"
               className="hero-map-component"
               onRegionClick={(region) => {
+                if (onAuthRequired) {
+                  onAuthRequired();
+                  return;
+                }
                 const notification = document.createElement('div');
                 notification.id = 'region-click-notification';
                 notification.className = 'region-notification';
