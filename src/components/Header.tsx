@@ -9,6 +9,7 @@ interface HeaderProps {
 export const Header = ({ onJoinClick }: HeaderProps) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export const Header = ({ onJoinClick }: HeaderProps) => {
           TRAVELTRACES
         </div>
         
-        <div id="header-nav-container" className="header-nav-container">
+        <div id="header-nav-container" className="header-nav-container flex-1 flex justify-center">
           <AnimatePresence mode="wait">
             {!isSearchOpen ? (
               <motion.nav 
