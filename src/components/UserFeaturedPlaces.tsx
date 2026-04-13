@@ -27,7 +27,7 @@ export const UserFeaturedPlaces = () => {
   const visiblePlaces = allPlaces.slice(startIndex, startIndex + 4);
 
   return (
-    <section id="user-explore" className="relative w-full pt-[30px] pb-0 px-[63px]">
+    <section id="user-explore" className="user-featured-places-section">
       <div id="user-featured-places-container" className="featured-places-container">
         <div id="user-featured-places-header" className="featured-places-header-group">
           <h2 id="user-featured-places-title" className="featured-places-title">Featured Top Places</h2>
@@ -42,7 +42,7 @@ export const UserFeaturedPlaces = () => {
             onClick={prevSlide}
             className="featured-nav-btn featured-prev-btn"
           >
-            <ChevronLeft className="nav-icon w-8 h-8" />
+            <ChevronLeft className="nav-icon featured-nav-icon" />
           </button>
           
           <div id="user-featured-places-grid" className="featured-places-grid">
@@ -79,7 +79,7 @@ export const UserFeaturedPlaces = () => {
             onClick={nextSlide}
             className="featured-nav-btn featured-next-btn"
           >
-            <ChevronRight className="nav-icon w-8 h-8" />
+            <ChevronRight className="nav-icon featured-nav-icon" />
           </button>
         </div>
 
