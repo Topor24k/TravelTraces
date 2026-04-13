@@ -45,7 +45,10 @@ export const Hero = ({ onAuthRequired }: { onAuthRequired?: () => void }) => {
           >
             <div id="hero-title-group" className="hero-title-group">
               <h1 id="hero-main-title" className="hero-main-title">
-                Discover and Share the Beauty of the Philippines
+                <span className="hero-main-title-line">Discover and Share the</span>
+                <span className="hero-main-title-line">
+                  Beauty of the <span className="hero-main-title-accent">Philippines</span>
+                </span>
               </h1>
               <p id="hero-main-description" className="hero-main-description">
                 From Luzon, Visayas, to Mindanao — 7,641 islands, endless adventures. Document your travels, create your personal Philippines album, and connect with fellow explorers who share the same love for this archipelago.
