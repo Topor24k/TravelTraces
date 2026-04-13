@@ -5,6 +5,18 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Hide scrollbars globally while preserving scroll behavior. */
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 @theme {
   --font-limelight: "Limelight", cursive;
   --font-life-savers: "Life Savers", system-ui;
@@ -29,7 +41,7 @@ html {
 }
 
 .contact-title {
-  @apply font-life-savers text-[66px] leading-[81px];
+  @apply font-limelight text-[66px] leading-[81px];
 }
 
 .contact-description {
@@ -114,7 +126,7 @@ html {
 }
 
 .nav-link-item {
-  @apply transition-colors relative;
+  @apply transition-colors relative whitespace-nowrap;
 }
 
 .nav-link-underline {
@@ -171,7 +183,15 @@ html {
 }
 
 .hero-main-title {
-  @apply font-life-savers text-[66.05px] leading-[81px] text-black w-full h-[162px];
+  @apply font-limelight text-[66.05px] leading-[1.05] text-black w-full h-[162px] flex flex-col gap-1;
+}
+
+.hero-main-title-line {
+  @apply block whitespace-nowrap;
+}
+
+.hero-main-title-accent {
+  @apply inline text-[#C96B2B];
 }
 
 .hero-main-description {
@@ -248,7 +268,7 @@ html {
 
 /* About Components */
 .about-section {
-  @apply w-full py-[120px] px-[75px] bg-[#F4F3EE] relative overflow-hidden;
+  @apply w-full py-[75px] px-[75px] bg-[#F4F3EE] relative overflow-hidden;
 }
 
 .about-bg-decoration {
@@ -284,7 +304,7 @@ html {
 }
 
 .about-main-title {
-  @apply font-life-savers text-[72px] leading-[1.1] font-bold;
+  @apply font-limelight text-[72px] leading-[1.1] font-bold;
 }
 
 .about-main-description {
@@ -400,6 +420,10 @@ html {
   @apply w-full min-h-[auto] bg-white py-[66px] px-[63px] relative lg:min-h-[900px];
 }
 
+.user-featured-places-section {
+  @apply relative w-full pt-[30px] pb-0 px-[63px];
+}
+
 .featured-places-container {
   @apply w-full;
 }
@@ -409,7 +433,7 @@ html {
 }
 
 .featured-places-title {
-  @apply font-life-savers text-[66.05px] leading-[81px];
+  @apply font-limelight text-[66.05px] leading-[81px];
 }
 
 .featured-places-description {
@@ -422,6 +446,10 @@ html {
 
 .featured-nav-btn {
   @apply absolute top-1/2 -translate-y-1/2 z-10 w-16 h-16 bg-[#414141] rounded-full flex items-center justify-center text-white hover:bg-black transition-colors shadow-xl;
+}
+
+.featured-nav-icon {
+  @apply w-8 h-8;
 }
 
 .featured-prev-btn {
@@ -531,7 +559,7 @@ html {
 }
 
 .traveler-postcards-title {
-  @apply font-life-savers text-[66px] leading-tight;
+  @apply font-limelight text-[66px] leading-tight;
 }
 
 .traveler-postcards-description {
@@ -576,7 +604,7 @@ html {
 
 /* CommunitySection Components */
 .community-section {
-  @apply w-full min-h-[845px] py-[120px] px-[75px] bg-[#F4F3EE] border-t border-black flex items-center justify-center;
+  @apply w-full min-h-[845px] py-[75px] px-[75px] bg-[#F4F3EE] border-t border-black flex items-center justify-center;
 }
 
 .community-content-wrapper {
@@ -738,4 +766,392 @@ body {
   background-color: #F4F3EE;
   color: #000000;
   overflow-x: hidden;
+}
+
+/* AuthModal Components */
+.auth-modal-overlay {
+  @apply fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm;
+}
+
+.auth-modal-card {
+  @apply bg-[#F4F3EE] w-full max-w-[500px] rounded-[30px] border border-black max-h-[90vh] overflow-y-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none];
+}
+
+.auth-modal-close-button {
+  @apply absolute top-6 right-6 p-2 hover:bg-black/5 rounded-full transition-colors z-10;
+}
+
+.close-icon {
+  @apply w-6 h-6;
+}
+
+.auth-modal-content {
+  @apply p-6 sm:p-10;
+}
+
+.auth-modal-header-group {
+  @apply flex flex-col gap-2 mb-6 sm:mb-8 mt-4 sm:mt-0;
+}
+
+.auth-modal-title {
+  @apply font-limelight text-[40px] leading-tight;
+}
+
+.auth-modal-description {
+  @apply font-life-savers text-lg opacity-60;
+}
+
+.auth-modal-form-element {
+  @apply flex flex-col gap-4 sm:gap-5;
+}
+
+.auth-form-field {
+  @apply flex flex-col gap-1.5 sm:gap-2;
+}
+
+.auth-form-label {
+  @apply font-life-savers text-sm font-bold uppercase tracking-wider opacity-50;
+}
+
+.auth-input-wrapper {
+  @apply relative;
+}
+
+.auth-form-input {
+  @apply w-full bg-white border border-black/10 rounded-xl py-3 sm:py-4 pl-4 pr-4 font-life-savers focus:outline-none focus:border-black transition-colors;
+}
+
+.auth-form-input-min {
+  @apply w-full bg-white border border-black/10 rounded-xl py-3 sm:py-4 pl-4 pr-4 font-life-savers focus:outline-none focus:border-black transition-colors min-w-0;
+}
+
+.auth-form-input-password {
+  @apply w-full bg-white border border-black/10 rounded-xl py-3 sm:py-4 pl-4 pr-14 font-life-savers focus:outline-none focus:border-black transition-colors min-w-0;
+}
+
+.auth-label-group {
+  @apply flex justify-between items-center;
+}
+
+.forgot-password-link {
+  @apply text-sm font-life-savers opacity-40 hover:opacity-100 transition-opacity;
+}
+
+.password-toggle-button {
+  @apply absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-black/5 rounded-md transition-colors;
+}
+
+.toggle-icon {
+  @apply w-5 h-5 opacity-40;
+}
+
+.auth-submit-button {
+  @apply w-full bg-black text-white py-4 sm:py-5 rounded-xl font-life-savers text-lg sm:text-xl font-bold mt-2 sm:mt-4 hover:bg-gray-800 transition-all shadow-[4px_4px_0px_0px_rgba(255,251,221,1)];
+}
+
+.auth-modal-footer-group {
+  @apply mt-6 pt-6 sm:mt-8 sm:pt-8 border-t border-black/5 text-center;
+}
+
+.auth-footer-text {
+  @apply font-life-savers text-lg;
+}
+
+.mode-switch-link {
+  @apply ml-2 font-bold underline hover:opacity-70 transition-opacity;
+}
+
+/* UserCommunitySection Components */
+.user-community-page-section {
+  @apply w-full min-h-[auto] bg-[#F4F3EE] py-[66px] px-[63px] relative;
+}
+
+.user-community-page-container {
+  @apply w-full max-w-none flex flex-col gap-[40px];
+}
+
+.user-community-top-header {
+  @apply flex flex-col gap-6 w-full relative z-30;
+}
+
+.user-community-page-title {
+  @apply font-limelight text-[66px] leading-tight;
+}
+
+.user-community-page-description {
+  @apply font-life-savers text-[24px] leading-[1.35] opacity-70 max-w-[800px];
+}
+
+.travel-post-categories-horizontal {
+  @apply w-full max-w-[1284px] h-[50px] mx-auto flex flex-row items-center gap-[46px] bg-white rounded-[30px] p-0 overflow-visible;
+}
+
+.travel-post-category-menu {
+  @apply relative z-40 w-[220px] h-[50px] shrink-0;
+}
+
+.travel-post-category-pill {
+  @apply relative inline-flex w-[220px] h-[50px] flex-row items-center justify-center gap-[10px] rounded-[30px] bg-transparent p-[10px] font-life-savers font-normal text-[24.4982px] leading-[30px] text-black transition-all duration-300 ease-out hover:-translate-y-[1px] active:translate-y-0 overflow-hidden;
+}
+
+.travel-post-category-active-bg {
+  @apply absolute inset-0 rounded-[30px] bg-[#FFFBDD] z-0;
+}
+
+.travel-post-category-pill-active {
+  @apply text-black;
+}
+
+.travel-post-category-pill-label {
+  @apply relative z-10 whitespace-nowrap text-center;
+}
+
+.travel-post-category-pill-icon {
+  @apply relative z-10 w-4 h-4 text-black/60 transition-transform duration-200;
+}
+
+.travel-post-category-pill-icon-open {
+  @apply rotate-180;
+}
+
+.travel-post-category-dropdown {
+  @apply absolute left-0 top-[calc(100%+12px)] z-50 min-w-[280px] max-w-[min(520px,calc(100vw-32px))] max-h-[280px] overflow-y-auto rounded-[16px] border border-black/15 bg-white p-2.5 shadow-2xl;
+}
+
+.travel-post-category-dropdown-list {
+  @apply flex flex-col gap-1;
+}
+
+.travel-post-category-dropdown-item {
+  @apply w-full text-left rounded-[10px] px-3 py-2 font-life-savers text-[15px] leading-tight hover:bg-[#F4F3EE] transition-colors;
+}
+
+.travel-post-categories-footer-menu {
+  @apply relative mt-0 inline-flex;
+}
+
+.travel-post-categories-trigger {
+  @apply inline-flex items-center gap-[10px] px-[10px] w-[251px] h-[68px] justify-center rounded-[40px] border border-black bg-[#FFFBDD] shadow-sm font-life-savers text-[25px] leading-none hover:bg-[#fdf6b2] transition-colors;
+}
+
+.travel-post-categories-trigger-label {
+  @apply whitespace-nowrap;
+}
+
+.travel-post-categories-trigger-icon {
+  @apply w-5 h-5 transition-transform duration-200;
+}
+
+.travel-post-categories-footer-menu:hover .travel-post-categories-trigger-icon,
+.travel-post-categories-footer-menu:focus-within .travel-post-categories-trigger-icon {
+  @apply rotate-180;
+}
+
+.travel-post-categories-popover {
+  @apply absolute left-0 bottom-[calc(100%+12px)] z-20 hidden w-[min(960px,calc(100vw-40px))] rounded-[22px] border border-black/10 bg-white shadow-2xl p-4;
+}
+
+.travel-post-categories-footer-menu:hover .travel-post-categories-popover,
+.travel-post-categories-footer-menu:focus-within .travel-post-categories-popover {
+  @apply block;
+}
+
+.travel-post-categories-popover-header {
+  @apply flex flex-col gap-1 mb-3;
+}
+
+.travel-post-categories-label {
+  @apply font-limelight text-[11px] uppercase tracking-[0.28em] opacity-45;
+}
+
+.travel-post-categories-title {
+  @apply font-limelight text-[18px] leading-tight;
+}
+
+.travel-post-categories-popover-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3;
+}
+
+.travel-post-category-group {
+  @apply rounded-[18px] border border-black/10 bg-[#F4F3EE] p-3;
+}
+
+.travel-post-category-group-title {
+  @apply font-limelight text-[16px] leading-tight mb-2;
+}
+
+.travel-post-category-chip-row {
+  @apply flex flex-wrap gap-1.5;
+}
+
+.travel-post-category-chip {
+  @apply inline-flex items-center rounded-full border border-black/10 bg-white px-2.5 py-1 font-life-savers text-[13px] leading-none;
+}
+
+.travel-post-footer-row {
+  @apply flex justify-start mt-[70px];
+}
+
+.community-top-places-slider {
+  @apply relative w-full;
+}
+
+.community-top-places-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[40px] w-full;
+}
+
+.community-top-place-card {
+  @apply relative aspect-[307/452] w-full rounded-[20px] overflow-hidden cursor-pointer shadow-lg;
+}
+
+.community-top-place-card-clickable {
+  @apply cursor-pointer;
+}
+
+.community-top-place-card-static {
+  @apply cursor-default;
+}
+
+.community-top-place-image {
+  @apply w-full h-full object-cover transition-transform duration-700 group-hover:scale-110;
+}
+
+.community-top-place-overlay {
+  @apply absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity;
+}
+
+.community-top-place-info {
+  @apply absolute bottom-[42px] left-[24px] right-[24px] text-white flex flex-col gap-1;
+}
+
+.community-top-place-name {
+  @apply font-limelight text-[24px] leading-tight;
+}
+
+.community-top-place-location {
+  @apply font-life-savers font-medium text-[18px] opacity-90;
+}
+
+.community-slider-nav-btn {
+  @apply absolute top-1/2 -translate-y-1/2 z-10 w-16 h-16 rounded-full bg-[#414141] text-white flex items-center justify-center hover:bg-black transition-colors;
+}
+
+.community-slider-prev-btn {
+  @apply -left-8 hidden xl:flex;
+}
+
+.community-slider-next-btn {
+  @apply -right-8 hidden xl:flex;
+}
+
+.community-slider-nav-icon {
+  @apply w-8 h-8;
+}
+
+.user-community-modal-overlay {
+  @apply fixed inset-0 z-[120] bg-black/55 backdrop-blur-[2px] p-4 md:p-8 overflow-y-auto;
+}
+
+.user-community-modal-card {
+  @apply relative w-full max-w-[1220px] mx-auto my-8 bg-[#F4F3EE] shadow-2xl;
+}
+
+.user-community-post-list {
+  @apply flex flex-col gap-7;
+}
+
+.user-community-post-card {
+  @apply w-full bg-[#F4F3EE] border border-black rounded-[26px] px-6 py-7 lg:px-10 lg:py-9;
+}
+
+.user-community-post-header {
+  @apply flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6;
+}
+
+.user-community-post-author-group {
+  @apply flex items-center gap-5;
+}
+
+.user-community-post-avatar {
+  @apply w-[85px] h-[85px] rounded-full object-cover bg-[#D9D9D9] border border-black/20;
+}
+
+.user-community-post-author-details {
+  @apply flex flex-col;
+}
+
+.user-community-post-author-name {
+  @apply font-life-savers text-[26px] leading-[1.2];
+}
+
+.user-community-post-author-email {
+  @apply font-life-savers text-[22px] leading-[1.2] opacity-60;
+}
+
+.user-community-post-map-btn {
+  @apply h-[58px] px-9 bg-[#FFFBDD] border border-black rounded-[34px] font-life-savers text-[22px] leading-none hover:bg-[#fdf6b2] transition-colors;
+}
+
+.user-community-post-body {
+  @apply flex flex-col lg:flex-row gap-8 lg:gap-9;
+}
+
+.user-community-post-place-media {
+  @apply relative w-full lg:w-[402px] h-[590px] shrink-0 rounded-[28px] overflow-hidden;
+}
+
+.user-community-post-place-image {
+  @apply absolute inset-0 w-full h-full object-cover;
+}
+
+.user-community-post-place-overlay {
+  @apply absolute inset-0 bg-[#353535] opacity-40;
+}
+
+.user-community-post-place-info {
+  @apply absolute left-[18px] bottom-[18px] text-white flex flex-col;
+}
+
+.user-community-post-place-name {
+  @apply font-limelight text-[32px] leading-[1.1];
+}
+
+.user-community-post-place-location {
+  @apply font-life-savers text-[24px] font-extrabold;
+}
+
+.user-community-post-content-column {
+  @apply flex-1 min-w-0 flex flex-col justify-between gap-8;
+}
+
+.user-community-post-description-wrapper {
+  @apply flex flex-col gap-3 lg:min-h-[470px];
+}
+
+.user-community-post-description {
+  @apply font-life-savers text-[24px] leading-[1.35] text-justify;
+}
+
+.user-community-read-more-btn {
+  @apply self-start font-life-savers text-[20px] underline hover:opacity-70 transition-opacity;
+}
+
+.user-community-post-engagement-row {
+  @apply flex flex-wrap items-center gap-6;
+}
+
+.user-community-post-engagement-btn {
+  @apply flex items-center gap-2 font-limelight text-[28px] leading-none hover:opacity-70 transition-opacity;
+}
+
+.user-community-post-engagement-icon {
+  @apply w-10 h-10;
+}
+
+.user-community-post-location-chip {
+  @apply ml-auto flex items-center gap-2 font-life-savers text-[20px] px-4 py-2 bg-white border border-black/20 rounded-full;
+}
+
+.user-community-post-location-chip-icon {
+  @apply w-5 h-5;
 }
