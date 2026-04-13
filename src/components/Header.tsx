@@ -48,7 +48,7 @@ export const Header = ({ onJoinClick }: HeaderProps) => {
     { name: "Stories", href: "#stories", id: "stories" },
     { name: "About", href: "#about", id: "about" },
     { name: "Message Me", href: "#contact", id: "contact" },
-    { name: "Community", href: "#community", id: "community" },
+    { name: "Share Us", href: "#community", id: "community" },
   ];
 
   return (
