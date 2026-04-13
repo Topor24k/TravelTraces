@@ -19,9 +19,9 @@ export const CommunitySection = () => {
         className="community-content-wrapper"
       >
         <div id="community-header" className="community-header-group">
-          <h2 id="community-title" className="community-title">Join Our Community</h2>
+          <h2 id="community-title" className="community-title">Share Us Through</h2>
           <p id="community-description" className="community-description">
-            Connect with fellow explorers, share your latest finds, and be part of our growing family of Filipino travelers.
+            Help this project grow by sharing TravelTraces through your socials, communities, and friends who love exploring the Philippines.
           </p>
         </div>
 
