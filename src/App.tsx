@@ -13,6 +13,7 @@ import { SharedPlaces } from "./components/SharedPlaces";
 import { TravelerPostcards } from "./components/TravelerPostcards";
 import { UserFeaturedPlaces } from "./components/UserFeaturedPlaces";
 import { UserTravelerPostcards } from "./components/UserTravelerPostcards";
+import { UserCommunitySection } from "./components/UserCommunitySection";
 import { About } from "./components/About";
 import { ContactSection } from "./components/ContactSection";
 import { CommunitySection } from "./components/CommunitySection";
@@ -54,6 +55,8 @@ export default function App() {
                 <UserFeaturedPlaces />
                 <UserTravelerPostcards />
               </>
+            ) : activeUserTab === "community" ? (
+              <UserCommunitySection />
             ) : (
               <div className="min-h-screen pt-40 px-8 max-w-7xl mx-auto text-center">
                 <div className="bg-white rounded-[20px] p-20 border border-black/10 shadow-sm flex flex-col items-center justify-center">
