@@ -1,20 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronRight, ChevronLeft } from "lucide-react";
+import { featuredPublicPlacePosts, getUserById } from "../data/mockDatabase";
 
 export const FeaturedPlaces = ({ onAuthRequired }: { onAuthRequired?: () => void }) => {
   const [startIndex, setStartIndex] = useState(0);
-  
-  const allPlaces = [
-    { name: "Aliwagwag Falls", location: "Davao Oriental", image: "/images/Aliwagwag%20Falls.jpg" },
-    { name: "El Nido Lagoon", location: "Palawan", image: "/images/El%20Nido%20Lagoons.jpg" },
-    { name: "Enchanted River", location: "Surigao del Sur", image: "/images/Enchanted%20River.jpg" },
-    { name: "Boracay", location: "Malay, Aklan", image: "/images/Boracay.jpg" },
-    { name: "Chocolate Hills", location: "Bohol", image: "/images/Chocolate%20Hills.jpg" },
-    { name: "Mayon Volcano", location: "Albay", image: "/images/Mayon%20Volcano.jpg" },
-    { name: "Cloud 9", location: "Siargao", image: "/images/Cloud%209%20Siargao.jpg" },
-    { name: "Banaue Rice Terraces", location: "Ifugao", image: "/images/Banana%20Rice%20Terraces.jpg" },
-  ];
+
+  const allPlaces = featuredPublicPlacePosts;
 
   const nextSlide = () => {
     setStartIndex((prev) => (prev + 1) % (allPlaces.length - 3));
@@ -47,10 +39,13 @@ export const FeaturedPlaces = ({ onAuthRequired }: { onAuthRequired?: () => void
           
           <div id="featured-places-grid" className="featured-places-grid">
             <AnimatePresence mode="popLayout">
-              {visiblePlaces.map((place) => (
+              {visiblePlaces.map((place) => {
+                const owner = getUserById(place.ownerId);
+
+                return (
                 <motion.div 
-                  id={`featured-place-${place.name.toLowerCase().replace(/\s+/g, '-')}`}
-                  key={place.name}
+                  id={`featured-place-${place.placeName.toLowerCase().replace(/\s+/g, '-')}`}
+                  key={place.id}
                   onClick={onAuthRequired}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -60,18 +55,19 @@ export const FeaturedPlaces = ({ onAuthRequired }: { onAuthRequired?: () => void
                   className="featured-place-card group"
                 >
                   <img 
-                    src={place.image} 
-                    alt={place.name} 
+                    src={place.image}
+                    alt={place.placeName}
                     className="featured-place-image"
                     referrerPolicy="no-referrer"
                   />
                   <div className="featured-place-overlay" />
                   <div className="featured-place-info">
-                    <h4 className="featured-place-name">{place.name}</h4>
+                    <h4 className="featured-place-name">{place.placeName}</h4>
                     <p className="featured-place-location">{place.location}</p>
+                    <p className="font-life-savers text-[13px] opacity-80 mt-1">By {owner?.name ?? "Unknown Traveler"}</p>
                   </div>
                 </motion.div>
-              ))}
+              );})}
             </AnimatePresence>
           </div>
 

@@ -1,59 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, ChevronRight, ChevronDown, Heart, MapPin, MessageCircle } from "lucide-react";
+import { communityFeedPosts, featuredPublicPlacePosts, getUserById } from "../data/mockDatabase";
 
-const FEATURED_PLACES = [
-  { name: "Aliwagwag Falls", location: "Davao Oriental", image: "/images/Aliwagwag Falls.jpg" },
-  { name: "El Nido Lagoon", location: "Palawan", image: "/images/El Nido Lagoons.jpg" },
-  { name: "Enchanted River", location: "Surigao del Sur", image: "/images/Enchanted River.jpg" },
-  { name: "Boracay", location: "Malay, Aklan", image: "/images/Boracay.jpg" },
-  { name: "Chocolate Hills", location: "Bohol", image: "/images/Chocolate Hills.jpg" },
-  { name: "Mayon Volcano", location: "Albay", image: "/images/Mayon Volcano.jpg" },
-  { name: "Cloud 9", location: "Siargao", image: "/images/Cloud 9 Siargao.jpg" },
-  { name: "Banaue Rice Terraces", location: "Ifugao", image: "/images/Banana Rice Terraces.jpg" },
-];
+const FEATURED_PLACES = featuredPublicPlacePosts.map((post) => ({
+  id: post.id,
+  name: post.placeName,
+  location: post.location,
+  image: post.image,
+  ownerId: post.ownerId,
+}));
 
-const COMMUNITY_POSTS = [
-  {
-    id: 1,
-    author: "Kayeen M. Campana",
-    email: "kayeencampana@gmail.com",
-    avatar: "https://i.pravatar.cc/150?u=kayeen",
-    placeName: "El Nido Lagoon",
-    location: "Palawan",
-    image: "/images/El Nido Lagoons.jpg",
-    description:
-      "The first time I arrived in El Nido, I immediately understood why people call it paradise. The moment I stepped out, I was greeted by towering limestone cliffs, clear water, and a calm atmosphere that felt unreal. Our island-hopping tour started early, and as the boat moved across the sea, every stop felt like a hidden world. The Big Lagoon was the part that stayed with me the most: the water shifted from deep blue to emerald green, and the sound of paddles echoing against the cliffs made everything feel quiet and sacred. I took my time kayaking deeper into the lagoon, and it felt like the whole place slowed down for a while. After that, we visited smaller beaches where the sand was soft, the water was warm, and local guides shared stories about the islands and their history. By sunset, the sky turned gold and orange over the cliffs, and I remember thinking that this was one of those travel moments you carry for years. El Nido did not feel like a simple destination; it felt like a place that reminded me to pause, observe, and appreciate how beautiful and peaceful nature can be when you let yourself experience it fully.",
-    likes: 30,
-    comments: 6,
-  },
-  {
-    id: 2,
-    author: "Kayeen M. Campana",
-    email: "kayeencampana@gmail.com",
-    avatar: "https://i.pravatar.cc/150?u=kayeen-2",
-    placeName: "Enchanted River",
-    location: "Surigao del Sur",
-    image: "/images/Enchanted River.jpg",
-    description:
-      "Nothing prepared me for the color of the Enchanted River in person. It looked lit from beneath, with deep blue tones that felt almost unreal, and the water was so clear that every movement seemed to glow under the sunlight. When I first stood near the edge, I could see shallow sections clearly, but the deeper parts faded into dark blue pockets that made the river feel mysterious and calm at the same time. I slowly stepped into the water and it was cooler than expected, refreshing after a hot day of travel. People around me were speaking softly, almost as if everyone understood this place deserved quiet respect. We spent time swimming, taking photos, and watching the fish feeding activity, and the whole experience felt less like a typical tourist stop and more like entering a natural sanctuary. Even after leaving the area, I kept thinking about how different the river felt from beaches and pools I had visited before. The Enchanted River is one of those places where the color, the silence, and the atmosphere combine into a memory that stays vivid long after the trip ends.",
-    likes: 45,
-    comments: 13,
-  },
-  {
-    id: 3,
-    author: "Kayeen M. Campana",
-    email: "kayeencampana@gmail.com",
-    avatar: "https://i.pravatar.cc/150?u=kayeen-3",
-    placeName: "Aliwagwag Falls",
-    location: "Davao Oriental",
-    image: "/images/Aliwagwag Falls.jpg",
-    description:
-      "Aliwagwag Falls looked like a giant staircase carved by nature the first moment I saw it. From a distance, the layered cascades seemed endless, and the sound of rushing water got louder with every step closer. The road trip through Davao Oriental was already beautiful, with green mountains, winding roads, and fresh air that made the long ride feel part of the adventure. When we reached the viewpoint, the scale of the falls became clear: tier after tier flowing into each other, each one reflecting sunlight differently. I spent time near the lower sections first, then walked around to see other angles, and every spot felt different in mood and sound. Some areas were loud and energetic while others felt calmer and more secluded. Local stories about the place made the visit even richer, because it gave context to how important the falls are to the community and to visitors who come for both nature and reflection. By the end of the day, I understood why people recommend Aliwagwag so strongly. It is not just one waterfall photo moment, but a full experience of movement, sound, and landscape that leaves a deep impression.",
-    likes: 45,
-    comments: 13,
-  },
-];
+const COMMUNITY_POSTS = communityFeedPosts;
 
 const TRAVEL_CATEGORIES = [
   {
@@ -80,8 +38,8 @@ const TRAVEL_CATEGORIES = [
 
 export const UserCommunitySection = () => {
   const [startIndex, setStartIndex] = useState(0);
-  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-  const [expandedPostIds, setExpandedPostIds] = useState<number[]>([]);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [expandedPostIds, setExpandedPostIds] = useState<string[]>([]);
   const [openCategoryTitle, setOpenCategoryTitle] = useState<string | null>(null);
   const categoriesRef = useRef<HTMLDivElement | null>(null);
 
@@ -110,9 +68,9 @@ export const UserCommunitySection = () => {
     setSelectedPostId(null);
   };
 
-  const isExpanded = (postId: number) => expandedPostIds.includes(postId);
+  const isExpanded = (postId: string) => expandedPostIds.includes(postId);
 
-  const toggleExpanded = (postId: number) => {
+  const toggleExpanded = (postId: string) => {
     setExpandedPostIds((prev) =>
       prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]
     );
@@ -195,9 +153,12 @@ export const UserCommunitySection = () => {
 
           <div className="community-top-places-grid">
             <AnimatePresence mode="popLayout">
-              {visiblePlaces.map((place) => (
+              {visiblePlaces.map((place) => {
+                const owner = getUserById(place.ownerId);
+
+                return (
                 <motion.article
-                  key={place.name}
+                  key={place.id}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
@@ -211,9 +172,10 @@ export const UserCommunitySection = () => {
                   <div className="community-top-place-info">
                     <h4 className="community-top-place-name">{place.name}</h4>
                     <p className="community-top-place-location">{place.location}</p>
+                    <p className="font-life-savers text-xs opacity-80 mt-1">By {owner?.name ?? "Unknown Traveler"}</p>
                   </div>
                 </motion.article>
-              ))}
+              );})}
             </AnimatePresence>
           </div>
 
@@ -239,16 +201,22 @@ export const UserCommunitySection = () => {
                 transition={{ duration: 0.2 }}
                 onClick={(event) => event.stopPropagation()}
               >
+                {(() => {
+                  const owner = getUserById(selectedPost.ownerId);
+
+                  return (
                 <div className="user-community-post-header">
                   <div className="user-community-post-author-group">
-                    <img src={selectedPost.avatar} alt={selectedPost.author} className="user-community-post-avatar" />
+                    <img src={owner?.avatar ?? "https://i.pravatar.cc/150?u=unknown"} alt={owner?.name ?? "Traveler"} className="user-community-post-avatar" />
                     <div className="user-community-post-author-details">
-                      <h3 className="user-community-post-author-name">{selectedPost.author}</h3>
-                      <p className="user-community-post-author-email">{selectedPost.email}</p>
+                      <h3 className="user-community-post-author-name">{owner?.name ?? "Traveler"}</h3>
+                      <p className="user-community-post-author-email">{owner?.email ?? "no-email@traveltraces.app"}</p>
                     </div>
                   </div>
                   <button className="user-community-post-map-btn">View on Map</button>
                 </div>
+                  );
+                })()}
 
                 <div className="user-community-post-body">
                   <div className="user-community-post-place-media">

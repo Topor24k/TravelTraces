@@ -1,32 +1,8 @@
 import { motion } from "motion/react";
+import { travelerPostcards, getUserById } from "../data/mockDatabase";
 
 export const TravelerPostcards = ({ onAuthRequired }: { onAuthRequired?: () => void }) => {
-  const postcards = [
-    { 
-      image: "/images/Cloud%209%20Siargao.jpg", 
-      caption: "Sunset at Siargao. Pure magic.", 
-      author: "@island_soul",
-      rotation: "-3deg"
-    },
-    { 
-      image: "/images/Boracay.jpg", 
-      caption: "Boracay's white sand is unbeatable.", 
-      author: "@beach_lover",
-      rotation: "2deg"
-    },
-    { 
-      image: "/images/Chocolate%20Hills.jpg", 
-      caption: "Chocolate Hills or giant truffles?", 
-      author: "@sweet_travels",
-      rotation: "-1deg"
-    },
-    { 
-      image: "/images/El%20Nido%20Lagoons.jpg", 
-      caption: "Crystal clear waters of El Nido.", 
-      author: "@blue_voyager",
-      rotation: "4deg"
-    }
-  ];
+  const postcards = travelerPostcards;
 
   return (
     <section id="stories" className="traveler-postcards-section !pt-0 !pb-20">
@@ -39,10 +15,13 @@ export const TravelerPostcards = ({ onAuthRequired }: { onAuthRequired?: () => v
         </div>
 
         <div id="postcards-grid" className="traveler-postcards-grid">
-          {postcards.map((card, index) => (
+          {postcards.map((card, index) => {
+            const owner = getUserById(card.ownerId);
+
+            return (
             <motion.div 
               id={`postcard-${index}`}
-              key={index}
+              key={card.id}
               onClick={onAuthRequired}
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
@@ -62,10 +41,10 @@ export const TravelerPostcards = ({ onAuthRequired }: { onAuthRequired?: () => v
               </div>
               <div className="postcard-content">
                 <p className="postcard-caption">"{card.caption}"</p>
-                <span className="postcard-author">{card.author}</span>
+                <span className="postcard-author">{owner?.handle ?? "@traveler"}</span>
               </div>
             </motion.div>
-          ))}
+          );})}
         </div>
 
         <div id="postcards-footer" className="traveler-postcards-footer">
