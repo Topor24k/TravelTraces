@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronRight, ChevronLeft, Plus } from "lucide-react";
+import { currentUserPlacePosts, getUserById } from "../data/mockDatabase";
 
-export const SharedPlaces = () => {
+interface SharedPlacesProps {
+  onAddNewPlace?: () => void;
+}
+
+export const SharedPlaces = ({ onAddNewPlace }: SharedPlacesProps) => {
   const [startIndex, setStartIndex] = useState(0);
-  
-  const allPlaces = [
-    { name: "My Siargao Trip", location: "General Luna", image: "/images/Cloud%209%20Siargao.jpg", date: "Jan 12, 2026" },
-    { name: "Bohol Adventure", location: "Carmen", image: "/images/Chocolate%20Hills.jpg", date: "Mar 05, 2026" },
-    { name: "Palawan Getaway", location: "El Nido", image: "/images/El%20Nido%20Lagoons.jpg", date: "Apr 02, 2026" },
-  ];
+
+  const allPlaces = currentUserPlacePosts;
 
   const nextSlide = () => {
     setStartIndex((prev) => (prev + 1) % Math.max(1, allPlaces.length - 2));
@@ -47,6 +48,7 @@ export const SharedPlaces = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               whileHover={{ y: -15 }}
+              onClick={onAddNewPlace}
               className="featured-place-card group border-2 border-dashed border-black/20 flex flex-col items-center justify-center cursor-pointer bg-white"
             >
               <div className="w-16 h-16 rounded-full bg-black/5 flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors duration-300">
@@ -57,10 +59,13 @@ export const SharedPlaces = () => {
             </motion.div>
 
             <AnimatePresence mode="popLayout">
-              {visiblePlaces.map((place) => (
+              {visiblePlaces.map((place) => {
+                const owner = getUserById(place.ownerId);
+
+                return (
                 <motion.div 
-                  id={`shared-place-${place.name.toLowerCase().replace(/\s+/g, '-')}`}
-                  key={place.name}
+                  id={`shared-place-${place.placeName.toLowerCase().replace(/\s+/g, '-')}`}
+                  key={place.id}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
@@ -69,18 +74,19 @@ export const SharedPlaces = () => {
                   className="featured-place-card group"
                 >
                   <img 
-                    src={place.image} 
-                    alt={place.name} 
+                    src={place.image}
+                    alt={place.placeName}
                     className="featured-place-image"
                     referrerPolicy="no-referrer"
                   />
                   <div className="featured-place-overlay" />
                   <div className="featured-place-info">
-                    <h4 className="featured-place-name">{place.name}</h4>
+                    <h4 className="featured-place-name">{place.title}</h4>
                     <p className="featured-place-location">{place.location} • {place.date}</p>
+                    <p className="font-life-savers text-[13px] opacity-80 mt-1">Owner: {owner?.name ?? "Unknown"}</p>
                   </div>
                 </motion.div>
-              ))}
+              );})}
             </AnimatePresence>
           </div>
 

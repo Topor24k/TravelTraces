@@ -19,6 +19,7 @@ import { ContactSection } from "./components/ContactSection";
 import { CommunitySection } from "./components/CommunitySection";
 import { Footer } from "./components/Footer";
 import { AuthModal } from "./components/AuthModal";
+import { PhilippinesMap } from "./components/PhilippinesMap";
 
 export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -51,10 +52,20 @@ export default function App() {
           <div className="bg-[#F4F3EE]">
             {activeUserTab === "home" ? (
               <>
-                <SharedPlaces />
+                <SharedPlaces onAddNewPlace={() => setActiveUserTab("map")} />
                 <UserFeaturedPlaces />
                 <UserTravelerPostcards />
               </>
+            ) : activeUserTab === "map" ? (
+              <section id="map" className="w-full px-3 md:px-5 lg:px-7 py-4">
+                <div className="w-full h-[calc(100vh-11.5rem)] min-h-[680px]">
+                  <PhilippinesMap
+                    id="user-full-philippines-map"
+                    className="w-full h-full"
+                    variant="explorer"
+                  />
+                </div>
+              </section>
             ) : activeUserTab === "community" ? (
               <UserCommunitySection />
             ) : (
