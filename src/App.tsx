@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Header } from "./components/Header";
 import { UserHeader } from "./components/UserHeader";
 import { Hero } from "./components/Hero";
+import { JourneyMarquee } from "./components/JourneyMarquee";
 import { HowItWorks } from "./components/HowItWorks";
 import { FeaturedPlaces } from "./components/FeaturedPlaces";
 import { SharedPlaces } from "./components/SharedPlaces";
@@ -40,6 +41,7 @@ export default function App() {
         {!isLoggedIn ? (
           <>
             <Hero onAuthRequired={() => setIsAuthModalOpen(true)} />
+            <JourneyMarquee />
             <HowItWorks />
             <FeaturedPlaces onAuthRequired={() => setIsAuthModalOpen(true)} />
             <TravelerPostcards onAuthRequired={() => setIsAuthModalOpen(true)} />
