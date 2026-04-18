@@ -505,6 +505,39 @@ html {
   @apply w-full;
 }
 
+.marquee-wrap {
+  @apply relative w-full overflow-hidden bg-white border-y border-black rounded-none;
+}
+
+.marquee-track {
+  @apply flex items-center w-max py-5;
+  animation: journey-marquee 28s linear infinite;
+  will-change: transform;
+}
+
+.marquee-group {
+  @apply flex items-center shrink-0;
+}
+
+.marquee-item {
+  @apply font-life-savers text-lg uppercase tracking-wide whitespace-nowrap px-6;
+}
+
+.marquee-item::after {
+  content: "\2022";
+  @apply ml-6 opacity-40;
+}
+
+@keyframes journey-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 .how-it-works-header {
   @apply flex flex-col gap-6 mb-16 items-center text-center;
 }
