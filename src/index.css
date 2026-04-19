@@ -784,11 +784,11 @@ html {
 
 /* PhilippinesMap Components */
 .philippines-map-container {
-  @apply relative;
+  @apply relative block w-fit mx-auto;
 }
 
 .philippines-map-svg {
-  @apply w-full h-full;
+  @apply block mx-auto;
 }
 
 .map-tooltip-content {
