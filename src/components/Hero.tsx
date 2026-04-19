@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronRight, ChevronLeft } from "lucide-react";
-import { PhilippinesMap } from "./PhilippinesMap";
 
 export const Hero = ({ onAuthRequired }: { onAuthRequired?: () => void }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -115,21 +114,11 @@ export const Hero = ({ onAuthRequired }: { onAuthRequired?: () => void }) => {
             transition={{ duration: 1.5, ease: "easeOut" }}
             className="hero-map-motion-wrapper"
           >
-            <PhilippinesMap 
-              id="hero-philippines-map"
-              className="hero-map-component"
-              onRegionClick={(region) => {
-                if (onAuthRequired) {
-                  onAuthRequired();
-                  return;
-                }
-                const notification = document.createElement('div');
-                notification.id = 'region-click-notification';
-                notification.className = 'region-notification';
-                notification.innerText = `You clicked on ${region}! Exploring this area...`;
-                document.body.appendChild(notification);
-                setTimeout(() => notification.remove(), 3000);
-              }}
+            <img
+              src="/images/Philippines.png"
+              alt="Philippines Map"
+              id="hero-philippines-image"
+              className="hero-map-component w-full h-full object-contain"
             />
           </motion.div>
         </div>
