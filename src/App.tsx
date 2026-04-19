@@ -18,6 +18,7 @@ import { UserCommunitySection } from "./components/UserCommunitySection";
 import { About } from "./components/About";
 import { ContactSection } from "./components/ContactSection";
 import { CommunitySection } from "./components/CommunitySection";
+import { PhilippinesMap } from "./components/PhilippinesMap";
 import { Footer } from "./components/Footer";
 import { AuthModal } from "./components/AuthModal";
 
@@ -58,12 +59,13 @@ export default function App() {
                 <UserTravelerPostcards />
               </>
             ) : activeUserTab === "map" ? (
-              <section id="map" className="w-full px-3 md:px-5 lg:px-7 py-4">
-                <div className="min-h-[calc(100vh-11.5rem)] px-3 md:px-8 max-w-7xl mx-auto text-center flex items-center justify-center">
-                  <div className="w-full bg-white rounded-[20px] p-12 md:p-16 border border-black/10 shadow-sm flex flex-col items-center justify-center">
-                    <h2 className="font-limelight text-4xl mb-4">Coming Soon</h2>
-                    <p className="font-life-savers text-xl text-gray-500">We are currently building this feature. Check back later!</p>
-                  </div>
+              <section id="map" className="relative w-full pt-10 pb-[30px] px-[75px]">
+                <div className="w-full h-[calc(100vh-232px)] overflow-auto">
+                  <PhilippinesMap
+                    id="user-philippines-map"
+                    className="w-full min-h-[180vh] overflow-visible bg-transparent flex justify-center"
+                    variant="explorer"
+                  />
                 </div>
               </section>
             ) : activeUserTab === "community" ? (
