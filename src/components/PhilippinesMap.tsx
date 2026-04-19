@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { geoMercator, geoPath } from "d3-geo";
+import { feature as topojsonFeature } from "topojson-client";
 import { cn } from "../lib/utils";
 
 interface PhilippinesMapProps {
@@ -9,13 +11,10 @@ interface PhilippinesMapProps {
   variant?: "default" | "explorer";
 }
 
-type RegionName = "Luzon" | "Visayas" | "Mindanao";
-
 interface MapPlace {
   id: string;
   name: string;
   d: string;
-  region: RegionName;
   bbox: DOMRect;
   cx: number;
   cy: number;
@@ -28,37 +27,46 @@ interface Bounds {
   maxY: number;
 }
 
-const DEFAULT_VIEWBOX = "0 0 1443 2514";
+// Larger canvas (2x from previous) while keeping full-country visibility
+const SVG_SCALE = 2;
+const SVG_WIDTH = 2666 * SVG_SCALE;
+const SVG_HEIGHT = 4666 * SVG_SCALE;
+const DEFAULT_VIEWBOX = `0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`;
+const EXPLORER_ZOOM = 9;
+const EXPLORER_RENDER_WIDTH_PX = 2200;
 
-const REGION_COLORS: Record<RegionName, string> = {
-  Luzon: "#f8d67d",
-  Visayas: "#9ed3d0",
-  Mindanao: "#f7b887",
-};
+const MAP_FILL = "#FFFBDD";
+const MAP_HOVER_FILL = "#fdf6b2";
 
-const REGION_HOVER_COLORS: Record<RegionName, string> = {
-  Luzon: "#f2c85f",
-  Visayas: "#84c4bf",
-  Mindanao: "#f1a66a",
-};
-
-const REGION_Y_THRESHOLDS = {
-  luzonMax: 1300,
-  visayasMax: 1800,
-};
-
-const getRegionByY = (y: number): RegionName => {
-  if (y < REGION_Y_THRESHOLDS.luzonMax) return "Luzon";
-  if (y < REGION_Y_THRESHOLDS.visayasMax) return "Visayas";
-  return "Mindanao";
-};
-
-const expandBounds = (bounds: Bounds, padding = 35): Bounds => ({
+const expandBounds = (bounds: Bounds, padding = 150): Bounds => ({
   minX: Math.max(0, bounds.minX - padding),
   minY: Math.max(0, bounds.minY - padding),
-  maxX: Math.min(1443, bounds.maxX + padding),
-  maxY: Math.min(2514, bounds.maxY + padding),
+  maxX: Math.min(SVG_WIDTH, bounds.maxX + padding),
+  maxY: Math.min(SVG_HEIGHT, bounds.maxY + padding),
 });
+
+const getMapBounds = (places: MapPlace[]): Bounds | null => {
+  const realBounds = places
+    .map((place) => place.bbox)
+    .filter((bbox) => bbox.width > 0 && bbox.height > 0);
+
+  if (!realBounds.length) return null;
+
+  return realBounds.reduce<Bounds>(
+    (accumulator, bbox) => ({
+      minX: Math.min(accumulator.minX, bbox.x),
+      minY: Math.min(accumulator.minY, bbox.y),
+      maxX: Math.max(accumulator.maxX, bbox.x + bbox.width),
+      maxY: Math.max(accumulator.maxY, bbox.y + bbox.height),
+    }),
+    {
+      minX: realBounds[0].x,
+      minY: realBounds[0].y,
+      maxX: realBounds[0].x + realBounds[0].width,
+      maxY: realBounds[0].y + realBounds[0].height,
+    },
+  );
+};
 
 const boundsToViewBox = (bounds: Bounds): string => {
   const width = Math.max(60, bounds.maxX - bounds.minX);
@@ -66,12 +74,59 @@ const boundsToViewBox = (bounds: Bounds): string => {
   return `${bounds.minX} ${bounds.minY} ${width} ${height}`;
 };
 
+const getExplorerViewBox = (bounds: Bounds): string => {
+  const fullWidth = Math.max(60, bounds.maxX - bounds.minX);
+  const fullHeight = Math.max(60, bounds.maxY - bounds.minY);
+  const width = Math.max(60, fullWidth / EXPLORER_ZOOM);
+  const height = Math.max(60, fullHeight / EXPLORER_ZOOM);
+  const centerX = bounds.minX + fullWidth / 2;
+  const centerY = bounds.minY + fullHeight / 2;
+
+  const minX = bounds.minX;
+  const maxX = Math.max(bounds.minX, bounds.maxX - width);
+  const minY = bounds.minY;
+  const maxY = Math.max(bounds.minY, bounds.maxY - height);
+
+  const x = Math.min(maxX, Math.max(minX, centerX - width / 2));
+  const y = Math.min(maxY, Math.max(minY, centerY - height / 2));
+
+  return `${x} ${y} ${width} ${height}`;
+};
+
+const PH_ADM3_TOPO_URL = "/data/phl-adm3.topo.json";
+
+const buildPlacesFromFeatureCollection = (featureCollection: any) => {
+  // Fit to 3x larger size so map details are much more visible and requires scrolling
+  const projection = geoMercator().fitSize([SVG_WIDTH, SVG_HEIGHT], featureCollection);
+  const pathGenerator = geoPath(projection);
+
+  return featureCollection.features
+    .map((feature: any, index: number) => {
+      const d = pathGenerator(feature);
+      if (!d) return null;
+
+      const properties = feature.properties ?? {};
+      const name =
+        properties.ADM3_EN ??
+        properties.ADM2_EN ??
+        properties.ADM1_EN ??
+        properties.ADM3_PCODE ??
+        `Place ${index + 1}`;
+
+      return {
+        id: `place-${index}`,
+        name: String(name),
+        d,
+      };
+    })
+    .filter((item: { id: string; name: string; d: string } | null): item is { id: string; name: string; d: string } => item !== null);
+};
+
 export const PhilippinesMap = ({ onRegionClick, className, id, variant = "default" }: PhilippinesMapProps) => {
   const isExplorer = variant === "explorer";
   const svgRef = useRef<SVGSVGElement>(null);
   const [places, setPlaces] = useState<MapPlace[]>([]);
   const [viewBox, setViewBox] = useState(DEFAULT_VIEWBOX);
-  const [activeRegion, setActiveRegion] = useState<RegionName | null>(null);
   const [focusedPlaceId, setFocusedPlaceId] = useState<string | null>(null);
   const [hoveredPlaceId, setHoveredPlaceId] = useState<string | null>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
@@ -86,72 +141,42 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
 
   const placeRefs = useRef<Map<string, SVGPathElement>>(new Map());
 
-  const regionBounds = useMemo(() => {
-    const initial: Record<RegionName, Bounds | null> = {
-      Luzon: null,
-      Visayas: null,
-      Mindanao: null,
-    };
-
-    for (const place of places) {
-      const current = initial[place.region];
-      const nextBounds: Bounds = {
-        minX: place.bbox.x,
-        minY: place.bbox.y,
-        maxX: place.bbox.x + place.bbox.width,
-        maxY: place.bbox.y + place.bbox.height,
-      };
-
-      initial[place.region] = current
-        ? {
-            minX: Math.min(current.minX, nextBounds.minX),
-            minY: Math.min(current.minY, nextBounds.minY),
-            maxX: Math.max(current.maxX, nextBounds.maxX),
-            maxY: Math.max(current.maxY, nextBounds.maxY),
-          }
-        : nextBounds;
-    }
-
-    return initial;
-  }, [places]);
-
   useEffect(() => {
-    fetch('/Philippines.svg')
-      .then(res => res.text())
-      .then(svgText => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(svgText, "image/svg+xml");
-        const pathElements = Array.from(doc.querySelectorAll("path"));
+    let isMounted = true;
 
-        const parsed = pathElements
-          .map((path, index) => {
-            const d = path.getAttribute("d");
-            if (!d) return null;
+    const initializeMap = async () => {
+      try {
+        const response = await fetch(PH_ADM3_TOPO_URL);
+        if (!response.ok) {
+          throw new Error("Failed to load prebuilt TopoJSON map.");
+        }
 
-            const name =
-              path.getAttribute("name") ||
-              path.getAttribute("id") ||
-              path.getAttribute("title") ||
-              `Place ${index + 1}`;
+        const topo = await response.json();
+        const featureCollection = topojsonFeature(topo, topo.objects.adm3);
+        const parsedPlaces = buildPlacesFromFeatureCollection(featureCollection);
 
-            return {
-              id: `place-${index}`,
-              name,
-              d,
-            };
-          })
-          .filter((item): item is { id: string; name: string; d: string } => item !== null);
+        if (!isMounted || !parsedPlaces.length) return;
 
         setPlaces(
-          parsed.map((item) => ({
+          parsedPlaces.map((item) => ({
             ...item,
-            region: "Luzon",
             bbox: new DOMRect(0, 0, 0, 0),
             cx: 0,
             cy: 0,
           })),
         );
-      });
+        // Always start with the full Philippines extent so no area is cut off.
+        setViewBox(DEFAULT_VIEWBOX);
+      } catch (error) {
+        console.error("Unable to render Phl_admbnda map:", error);
+      }
+    };
+
+    initializeMap();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -164,14 +189,12 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
       const bbox = element.getBBox();
       const cx = bbox.x + bbox.width / 2;
       const cy = bbox.y + bbox.height / 2;
-      const region = getRegionByY(cy);
 
       return {
         ...place,
         bbox,
         cx,
         cy,
-        region,
       };
     });
 
@@ -179,12 +202,18 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
     if (!hasRealBbox) return;
 
     setPlaces(next);
-  }, [places.length]);
+
+    if (isExplorer) {
+      const mapBounds = getMapBounds(next);
+      if (mapBounds) {
+        setViewBox(getExplorerViewBox(mapBounds));
+      }
+    }
+  }, [places.length, isExplorer]);
 
   useEffect(() => {
     if (!isExplorer) {
       setViewBox(DEFAULT_VIEWBOX);
-      setActiveRegion(null);
       setSelectedPlaceId(null);
       setFocusedPlaceId(null);
       setPin(null);
@@ -192,56 +221,9 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
     }
   }, [isExplorer]);
 
-  const zoomToRegion = (region: RegionName) => {
-    const bounds = regionBounds[region];
-    if (!bounds) return;
-
-    setActiveRegion(region);
-    setSelectedPlaceId(null);
-    setPin(null);
-    setViewBox(boundsToViewBox(expandBounds(bounds, 60)));
-    onRegionClick?.(region);
-  };
-
-  const resetZoom = () => {
-    setActiveRegion(null);
-    setFocusedPlaceId(null);
-    setSelectedPlaceId(null);
-    setPin(null);
-    setViewBox(DEFAULT_VIEWBOX);
-  };
-
-  const exitPlaceFocus = () => {
-    if (!activeRegion) {
-      resetZoom();
-      return;
-    }
-
-    const bounds = regionBounds[activeRegion];
-    if (!bounds) {
-      resetZoom();
-      return;
-    }
-
-    setFocusedPlaceId(null);
-    setSelectedPlaceId(null);
-    setPin(null);
-    setViewBox(boundsToViewBox(expandBounds(bounds, 60)));
-  };
-
   const handlePlaceClick = (place: MapPlace) => {
     if (!isExplorer) {
       onRegionClick?.(place.name);
-      return;
-    }
-
-    if (!activeRegion) {
-      zoomToRegion(place.region);
-      return;
-    }
-
-    if (place.region !== activeRegion) {
-      zoomToRegion(place.region);
       return;
     }
 
@@ -274,115 +256,75 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
     <div
       id={id || "philippines-map-container"}
       className={cn(
-        "philippines-map-container relative overflow-hidden",
-        isExplorer && "rounded-[20px] border border-black/15 bg-[#f8f5e9]",
+        "philippines-map-container relative",
+        isExplorer && "w-full",
         className,
       )}
     >
-      {isExplorer && (
-        <>
-          <div className="absolute top-4 left-4 z-20 rounded-2xl border border-black/10 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-sm">
-            <p className="font-limelight text-lg leading-none">Map Explorer</p>
-            <p className="font-life-savers text-sm text-black/65 mt-1">
-              1) Choose a major island group, 2) Click a place, 3) Pin and document it.
-            </p>
-            <p className="font-life-savers text-xs text-black/55 mt-2">
-              Tip: When you pick a place, only that island remains visible for focused pinning.
-            </p>
-          </div>
-
-          <div className="absolute top-4 right-4 z-20 flex flex-wrap items-center gap-2">
-            {(["Luzon", "Visayas", "Mindanao"] as RegionName[]).map((region) => (
-              <button
-                key={region}
-                type="button"
-                onClick={() => zoomToRegion(region)}
-                className={cn(
-                  "rounded-full border border-black/20 px-4 py-2 font-life-savers text-sm transition-colors",
-                  activeRegion === region ? "bg-black text-white" : "bg-white/90 hover:bg-[#fff5cf]",
-                )}
-              >
-                {region}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={resetZoom}
-              className="rounded-full border border-black/20 bg-white/90 px-4 py-2 font-life-savers text-sm hover:bg-[#fff5cf]"
-            >
-              Reset
-            </button>
-            {focusedPlaceId && (
-              <button
-                type="button"
-                onClick={exitPlaceFocus}
-                className="rounded-full border border-black bg-black px-4 py-2 font-life-savers text-sm text-white"
-              >
-                Exit Place Focus
-              </button>
-            )}
-          </div>
-        </>
-      )}
-
       <svg
         id="philippines-svg"
         ref={svgRef}
-        width="1443"
-        height="2514"
+        width={SVG_WIDTH}
+        height={SVG_HEIGHT}
         viewBox={viewBox}
+        preserveAspectRatio={isExplorer ? "xMidYMid meet" : "xMidYMid meet"}
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="philippines-map-svg w-full h-full transition-all duration-500"
+        style={isExplorer ? { width: `${EXPLORER_RENDER_WIDTH_PX}px` } : undefined}
+        className={cn(
+          "philippines-map-svg transition-all duration-500 block mx-auto",
+          isExplorer ? "max-w-none h-auto" : "w-auto h-auto",
+        )}
       >
-        {places.map((place) => {
-          const isActiveRegion = !isExplorer || !activeRegion || place.region === activeRegion;
-          const isFocused = !focusedPlaceId || focusedPlaceId === place.id;
-          const isSelected = selectedPlaceId === place.id;
-          const isHovered = hoveredPlaceId === place.id;
-          const baseFill = isExplorer ? REGION_COLORS[place.region] : "#FFFBDD";
+        <g>
+          {places.map((place) => {
+            const isFocused = !focusedPlaceId || focusedPlaceId === place.id;
+            const isSelected = selectedPlaceId === place.id;
+            const isHovered = hoveredPlaceId === place.id;
+            const baseFill = MAP_FILL;
 
-          return (
-            <path
-              key={place.id}
-              ref={(node) => {
-                if (node) {
-                  placeRefs.current.set(place.id, node);
-                } else {
-                  placeRefs.current.delete(place.id);
-                }
-              }}
-              d={place.d}
-              fill={isHovered || isSelected ? (isExplorer ? REGION_HOVER_COLORS[place.region] : "#fdf6b2") : baseFill}
-              stroke="#393939"
-              strokeWidth={isExplorer && isSelected ? 3.4 : 2.2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-              style={{
-                cursor: "pointer",
-                opacity: isActiveRegion && isFocused ? 1 : 0,
-                transition: "fill 220ms ease, opacity 260ms ease",
-              }}
-              onMouseEnter={() => setHoveredPlaceId(place.id)}
-              onMouseLeave={() => setHoveredPlaceId(null)}
-              onClick={() => handlePlaceClick(place)}
-            />
-          );
-        })}
+            return (
+              <path
+                key={place.id}
+                ref={(node) => {
+                  if (node) {
+                    placeRefs.current.set(place.id, node);
+                  } else {
+                    placeRefs.current.delete(place.id);
+                  }
+                }}
+                d={place.d}
+                fill={isHovered || isSelected ? MAP_HOVER_FILL : baseFill}
+                stroke="#393939"
+                strokeWidth={isExplorer && isSelected ? 3.4 : 2.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+                style={{
+                  cursor: "pointer",
+                  opacity: isFocused ? 1 : 0,
+                  transition: "fill 220ms ease, opacity 260ms ease",
+                }}
+                onMouseEnter={() => setHoveredPlaceId(place.id)}
+                onMouseLeave={() => setHoveredPlaceId(null)}
+                onClick={() => handlePlaceClick(place)}
+              />
+            );
+          })}
 
-        <AnimatePresence>
-          {pin && (
-            <motion.g
-              initial={{ opacity: 0, scale: 0.7 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.7 }}
-            >
-              <circle cx={pin.x} cy={pin.y} r={16} fill="rgba(255, 87, 87, 0.2)" />
-              <circle cx={pin.x} cy={pin.y} r={7} fill="#ff5757" stroke="#fff" strokeWidth={2} />
-            </motion.g>
-          )}
-        </AnimatePresence>
+          <AnimatePresence>
+            {pin && (
+              <motion.g
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+              >
+                <circle cx={pin.x} cy={pin.y} r={16} fill="rgba(255, 87, 87, 0.2)" />
+                <circle cx={pin.x} cy={pin.y} r={7} fill="#ff5757" stroke="#fff" strokeWidth={2} />
+              </motion.g>
+            )}
+          </AnimatePresence>
+        </g>
       </svg>
 
       <AnimatePresence>
