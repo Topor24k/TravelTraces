@@ -12,8 +12,6 @@ import { HowItWorks } from "./components/HowItWorks";
 import { FeaturedPlaces } from "./components/FeaturedPlaces";
 import { SharedPlaces } from "./components/SharedPlaces";
 import { TravelerPostcards } from "./components/TravelerPostcards";
-import { UserFeaturedPlaces } from "./components/UserFeaturedPlaces";
-import { UserTravelerPostcards } from "./components/UserTravelerPostcards";
 import { UserCommunitySection } from "./components/UserCommunitySection";
 import { About } from "./components/About";
 import { ContactSection } from "./components/ContactSection";
@@ -57,8 +55,8 @@ export default function App() {
             {activeUserTab === "home" ? (
               <>
                 <SharedPlaces onAddNewPlace={() => setActiveUserTab("map")} />
-                <UserFeaturedPlaces />
-                <UserTravelerPostcards />
+                <FeaturedPlaces variant="user" />
+                <TravelerPostcards variant="user" />
               </>
             ) : activeUserTab === "map" ? (
               <section id="map" className="relative w-full pt-10 pb-[30px] px-[75px]">
