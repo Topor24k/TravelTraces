@@ -784,11 +784,32 @@ html {
 
 /* PhilippinesMap Components */
 .philippines-map-container {
-  @apply relative block w-fit mx-auto;
+  @apply relative block w-max min-w-full h-full overflow-visible;
 }
 
 .philippines-map-svg {
-  @apply block mx-auto;
+  @apply block;
+}
+
+.map-explorer-scroll {
+  -ms-overflow-style: auto;
+  scrollbar-width: auto;
+}
+
+.map-explorer-scroll::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
+.map-explorer-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+.map-explorer-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .map-tooltip-content {
