@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { geoMercator, geoPath } from "d3-geo";
-import { feature as topojsonFeature } from "topojson-client";
+import { geoIdentity, geoMercator, geoPath } from "d3-geo";
 import { cn } from "../lib/utils";
 
 interface PhilippinesMapProps {
@@ -9,127 +8,168 @@ interface PhilippinesMapProps {
   className?: string;
   id?: string;
   variant?: "default" | "explorer";
+  zoomLevel?: number;
+  onZoomChange?: (zoomLevel: number) => void;
+  onFitZoomChange?: (fitZoom: number) => void;
+  showZoomControls?: boolean;
 }
 
 interface MapPlace {
   id: string;
   name: string;
+  adm2Name: string;
+  adm1Name: string;
+  shapeLength: number;
+  shapeArea: number;
+  areaSqKm: number;
   d: string;
   bbox: DOMRect;
   cx: number;
   cy: number;
 }
 
-interface Bounds {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
+interface GeoFeatureProperties {
+  ADM1_EN?: string;
+  ADM2_EN?: string;
+  ADM3_EN?: string;
+  ADM1_PCODE?: string;
+  ADM2_PCODE?: string;
+  ADM3_PCODE?: string;
+  Shape_Leng?: number;
+  Shape_Area?: number;
+  AREA_SQKM?: number;
+  shape_length?: number;
+  shape_area?: number;
+  area_sqkm?: number;
 }
 
-// Larger canvas (2x from previous) while keeping full-country visibility
+interface GeoFeature {
+  properties?: GeoFeatureProperties;
+  geometry?: unknown;
+}
+
+interface GeoFeatureCollection {
+  type: "FeatureCollection";
+  features: GeoFeature[];
+}
+
+// Larger canvas while keeping full-country visibility.
 const SVG_SCALE = 2;
 const SVG_WIDTH = 2666 * SVG_SCALE;
 const SVG_HEIGHT = 4666 * SVG_SCALE;
 const DEFAULT_VIEWBOX = `0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`;
-const EXPLORER_ZOOM = 9;
-const EXPLORER_RENDER_WIDTH_PX = 2200;
+const MAP_CONTENT_SCALE = 0.94;
+const EXPLORER_BASE_WIDTH_PX = 1200;
+const DEFAULT_VISUAL_ZOOM_MULTIPLIER = 5;
+const MIN_EXPLORER_ZOOM = 0.2;
+const MAX_EXPLORER_ZOOM = 3;
 
 const MAP_FILL = "#FFFBDD";
 const MAP_HOVER_FILL = "#fdf6b2";
 
-const expandBounds = (bounds: Bounds, padding = 150): Bounds => ({
-  minX: Math.max(0, bounds.minX - padding),
-  minY: Math.max(0, bounds.minY - padding),
-  maxX: Math.min(SVG_WIDTH, bounds.maxX + padding),
-  maxY: Math.min(SVG_HEIGHT, bounds.maxY + padding),
+const PH_GEOJSON_URL = "/data/Philippines.geojson";
+
+const getFeatureMetric = (properties: GeoFeatureProperties) => ({
+  shapeLength: properties.Shape_Leng ?? properties.shape_length ?? 0,
+  shapeArea: properties.Shape_Area ?? properties.shape_area ?? 0,
+  areaSqKm: properties.AREA_SQKM ?? properties.area_sqkm ?? 0,
 });
 
-const getMapBounds = (places: MapPlace[]): Bounds | null => {
-  const realBounds = places
-    .map((place) => place.bbox)
-    .filter((bbox) => bbox.width > 0 && bbox.height > 0);
-
-  if (!realBounds.length) return null;
-
-  return realBounds.reduce<Bounds>(
-    (accumulator, bbox) => ({
-      minX: Math.min(accumulator.minX, bbox.x),
-      minY: Math.min(accumulator.minY, bbox.y),
-      maxX: Math.max(accumulator.maxX, bbox.x + bbox.width),
-      maxY: Math.max(accumulator.maxY, bbox.y + bbox.height),
-    }),
-    {
-      minX: realBounds[0].x,
-      minY: realBounds[0].y,
-      maxX: realBounds[0].x + realBounds[0].width,
-      maxY: realBounds[0].y + realBounds[0].height,
-    },
-  );
-};
-
-const boundsToViewBox = (bounds: Bounds): string => {
-  const width = Math.max(60, bounds.maxX - bounds.minX);
-  const height = Math.max(60, bounds.maxY - bounds.minY);
-  return `${bounds.minX} ${bounds.minY} ${width} ${height}`;
-};
-
-const getExplorerViewBox = (bounds: Bounds): string => {
-  const fullWidth = Math.max(60, bounds.maxX - bounds.minX);
-  const fullHeight = Math.max(60, bounds.maxY - bounds.minY);
-  const width = Math.max(60, fullWidth / EXPLORER_ZOOM);
-  const height = Math.max(60, fullHeight / EXPLORER_ZOOM);
-  const centerX = bounds.minX + fullWidth / 2;
-  const centerY = bounds.minY + fullHeight / 2;
-
-  const minX = bounds.minX;
-  const maxX = Math.max(bounds.minX, bounds.maxX - width);
-  const minY = bounds.minY;
-  const maxY = Math.max(bounds.minY, bounds.maxY - height);
-
-  const x = Math.min(maxX, Math.max(minX, centerX - width / 2));
-  const y = Math.min(maxY, Math.max(minY, centerY - height / 2));
-
-  return `${x} ${y} ${width} ${height}`;
-};
-
-const PH_ADM3_TOPO_URL = "/data/phl-adm3.topo.json";
-
-const buildPlacesFromFeatureCollection = (featureCollection: any) => {
-  // Fit to 3x larger size so map details are much more visible and requires scrolling
-  const projection = geoMercator().fitSize([SVG_WIDTH, SVG_HEIGHT], featureCollection);
+const buildProjectedPaths = (
+  featureCollection: GeoFeatureCollection,
+  projectionFactory: () => any,
+) => {
+  const projection = projectionFactory();
   const pathGenerator = geoPath(projection);
 
   return featureCollection.features
-    .map((feature: any, index: number) => {
-      const d = pathGenerator(feature);
+    .map((feature: GeoFeature, index: number) => {
+      if (!feature.geometry) return null;
+
+      const d = pathGenerator(feature as any);
       if (!d) return null;
 
       const properties = feature.properties ?? {};
-      const name =
-        properties.ADM3_EN ??
-        properties.ADM2_EN ??
-        properties.ADM1_EN ??
-        properties.ADM3_PCODE ??
-        `Place ${index + 1}`;
+      const adm1Name = properties.ADM1_EN ?? "Unknown Region";
+      const adm2Name = properties.ADM2_EN ?? "Unknown Place Group";
+      const name = properties.ADM3_EN ?? properties.ADM3_PCODE ?? `Place ${index + 1}`;
+      const metrics = getFeatureMetric(properties);
+      const fallbackMetricToken = `${metrics.shapeLength.toFixed(3)}-${metrics.shapeArea.toFixed(3)}-${metrics.areaSqKm.toFixed(3)}`;
 
       return {
-        id: `place-${index}`,
+        id: properties.ADM3_PCODE ?? `${properties.ADM2_PCODE ?? "adm2"}-${index}-${fallbackMetricToken}`,
         name: String(name),
+        adm2Name: String(adm2Name),
+        adm1Name: String(adm1Name),
+        shapeLength: metrics.shapeLength,
+        shapeArea: metrics.shapeArea,
+        areaSqKm: metrics.areaSqKm,
         d,
       };
     })
-    .filter((item: { id: string; name: string; d: string } | null): item is { id: string; name: string; d: string } => item !== null);
+    .filter(
+      (
+        item:
+          | {
+              id: string;
+              name: string;
+              adm2Name: string;
+              adm1Name: string;
+              shapeLength: number;
+              shapeArea: number;
+              areaSqKm: number;
+              d: string;
+            }
+          | null,
+      ): item is {
+        id: string;
+        name: string;
+        adm2Name: string;
+        adm1Name: string;
+        shapeLength: number;
+        shapeArea: number;
+        areaSqKm: number;
+        d: string;
+      } => item !== null,
+    );
 };
 
-export const PhilippinesMap = ({ onRegionClick, className, id, variant = "default" }: PhilippinesMapProps) => {
+const buildPlacesFromFeatureCollection = (featureCollection: GeoFeatureCollection) => {
+  // Try geographic projection first; if the source is already projected, fallback to planar fit.
+  const mercatorPaths = buildProjectedPaths(
+    featureCollection,
+    () => geoMercator().fitSize([SVG_WIDTH * MAP_CONTENT_SCALE, SVG_HEIGHT * MAP_CONTENT_SCALE], featureCollection as any),
+  );
+
+  if (mercatorPaths.length) return mercatorPaths;
+
+  return buildProjectedPaths(
+    featureCollection,
+    () => geoIdentity().reflectY(true).fitSize([SVG_WIDTH * MAP_CONTENT_SCALE, SVG_HEIGHT * MAP_CONTENT_SCALE], featureCollection as any),
+  );
+};
+
+export const PhilippinesMap = ({
+  onRegionClick,
+  className,
+  id,
+  variant = "default",
+  zoomLevel,
+  onZoomChange,
+  onFitZoomChange,
+  showZoomControls = true,
+}: PhilippinesMapProps) => {
   const isExplorer = variant === "explorer";
+  const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [places, setPlaces] = useState<MapPlace[]>([]);
   const [viewBox, setViewBox] = useState(DEFAULT_VIEWBOX);
-  const [focusedPlaceId, setFocusedPlaceId] = useState<string | null>(null);
   const [hoveredPlaceId, setHoveredPlaceId] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const [fitZoom, setFitZoom] = useState(1);
+  const [isLoadingMap, setIsLoadingMap] = useState(true);
+  const [mapLoadError, setMapLoadError] = useState<string | null>(null);
   const [pin, setPin] = useState<{ x: number; y: number; placeName: string } | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [journalForm, setJournalForm] = useState({
@@ -140,20 +180,40 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
   });
 
   const placeRefs = useRef<Map<string, SVGPathElement>>(new Map());
+  const groupedPlaceSummary = useMemo(() => {
+    const byRegion = new Map<string, Set<string>>();
+
+    places.forEach((place) => {
+      const existing = byRegion.get(place.adm1Name) ?? new Set<string>();
+      existing.add(place.adm2Name);
+      byRegion.set(place.adm1Name, existing);
+    });
+
+    const regionCount = byRegion.size;
+    const placeGroupCount = Array.from(byRegion.values()).reduce((count, groups) => count + groups.size, 0);
+    const municipalityCount = places.length;
+
+    return { regionCount, placeGroupCount, municipalityCount };
+  }, [places]);
 
   useEffect(() => {
     let isMounted = true;
 
     const initializeMap = async () => {
       try {
-        const response = await fetch(PH_ADM3_TOPO_URL);
+        setIsLoadingMap(true);
+        setMapLoadError(null);
+        const response = await fetch(PH_GEOJSON_URL);
         if (!response.ok) {
-          throw new Error("Failed to load prebuilt TopoJSON map.");
+          throw new Error("Failed to load Philippines GeoJSON map.");
         }
 
-        const topo = await response.json();
-        const featureCollection = topojsonFeature(topo, topo.objects.adm3);
+        const featureCollection = (await response.json()) as GeoFeatureCollection;
         const parsedPlaces = buildPlacesFromFeatureCollection(featureCollection);
+
+        if (!parsedPlaces.length) {
+          throw new Error("No drawable features were found in Philippines.geojson.");
+        }
 
         if (!isMounted || !parsedPlaces.length) return;
 
@@ -168,7 +228,11 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
         // Always start with the full Philippines extent so no area is cut off.
         setViewBox(DEFAULT_VIEWBOX);
       } catch (error) {
+        setPlaces([]);
+        setMapLoadError(error instanceof Error ? error.message : "Unable to render the GeoJSON map.");
         console.error("Unable to render Phl_admbnda map:", error);
+      } finally {
+        setIsLoadingMap(false);
       }
     };
 
@@ -203,41 +267,65 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
 
     setPlaces(next);
 
-    if (isExplorer) {
-      const mapBounds = getMapBounds(next);
-      if (mapBounds) {
-        setViewBox(getExplorerViewBox(mapBounds));
-      }
-    }
   }, [places.length, isExplorer]);
 
   useEffect(() => {
     if (!isExplorer) {
       setViewBox(DEFAULT_VIEWBOX);
       setSelectedPlaceId(null);
-      setFocusedPlaceId(null);
+      setFitZoom(1);
       setPin(null);
       setIsFormOpen(false);
     }
   }, [isExplorer]);
 
+  const clampZoom = (value: number) => Math.min(MAX_EXPLORER_ZOOM, Math.max(MIN_EXPLORER_ZOOM, value));
+
+  const setTooltipFromPointer = (event: React.MouseEvent<SVGPathElement>) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    setTooltipPosition({
+      x: event.clientX - rect.left + 14,
+      y: event.clientY - rect.top + 14,
+    });
+  };
+
+  useEffect(() => {
+    if (!isExplorer) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const svgAspectRatio = SVG_HEIGHT / SVG_WIDTH;
+    const baseHeight = EXPLORER_BASE_WIDTH_PX * svgAspectRatio;
+
+    const updateFitZoom = () => {
+      const widthFit = container.clientWidth / EXPLORER_BASE_WIDTH_PX;
+      const heightFit = container.clientHeight / baseHeight;
+      const nextFit = clampZoom(Math.min(widthFit, heightFit));
+
+      setFitZoom(nextFit);
+      onFitZoomChange?.(nextFit);
+    };
+
+    updateFitZoom();
+
+    const observer = new ResizeObserver(updateFitZoom);
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [isExplorer, onFitZoomChange]);
+
   const handlePlaceClick = (place: MapPlace) => {
     if (!isExplorer) {
-      onRegionClick?.(place.name);
+      onRegionClick?.(`${place.adm1Name} • ${place.adm2Name}`);
       return;
     }
 
-    const placeBounds: Bounds = {
-      minX: place.bbox.x,
-      minY: place.bbox.y,
-      maxX: place.bbox.x + place.bbox.width,
-      maxY: place.bbox.y + place.bbox.height,
-    };
-
     setSelectedPlaceId(place.id);
-    setFocusedPlaceId(place.id);
     setPin({ x: place.cx, y: place.cy, placeName: place.name });
-    setViewBox(boundsToViewBox(expandBounds(placeBounds, 90)));
     setJournalForm((prev) => ({ ...prev, placeName: place.name }));
     setIsFormOpen(true);
   };
@@ -255,12 +343,58 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
   return (
     <div
       id={id || "philippines-map-container"}
+      ref={containerRef}
       className={cn(
         "philippines-map-container relative",
-        isExplorer && "w-full",
+        isExplorer && "w-full h-full",
         className,
       )}
     >
+      {isLoadingMap && (
+        <div className="absolute inset-0 z-20 grid place-items-center bg-[#F4F3EE]/70 backdrop-blur-[1px]">
+          <p className="rounded-full border border-black/10 bg-white/80 px-4 py-2 font-life-savers text-sm text-black/70">
+            Loading Philippines map...
+          </p>
+        </div>
+      )}
+
+      {mapLoadError && (
+        <div className="absolute inset-0 z-20 grid place-items-center bg-[#F4F3EE]/80 p-4">
+          <p className="max-w-[560px] rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-center font-life-savers text-sm text-red-700">
+            {mapLoadError}
+          </p>
+        </div>
+      )}
+
+      {isExplorer && showZoomControls && (
+        <div className="absolute right-3 top-3 z-20 flex items-center gap-1 rounded-full border border-black/15 bg-white/85 p-1 shadow-lg backdrop-blur">
+          <button
+            type="button"
+            onClick={() => onZoomChange?.(Math.max(MIN_EXPLORER_ZOOM, (zoomLevel ?? 1) - 0.15))}
+            className="h-8 w-8 rounded-full border border-black/10 bg-white font-life-savers text-lg leading-none"
+            aria-label="Zoom out"
+          >
+            -
+          </button>
+          <button
+            type="button"
+            onClick={() => onZoomChange?.(1)}
+            className="rounded-full border border-black/10 bg-white px-2 py-1 font-life-savers text-xs"
+            aria-label="Reset zoom"
+          >
+            {Math.round((zoomLevel ?? 1) * 100)}%
+          </button>
+          <button
+            type="button"
+            onClick={() => onZoomChange?.(Math.min(MAX_EXPLORER_ZOOM, (zoomLevel ?? 1) + 0.15))}
+            className="h-8 w-8 rounded-full border border-black/10 bg-white font-life-savers text-lg leading-none"
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+        </div>
+      )}
+
       <svg
         id="philippines-svg"
         ref={svgRef}
@@ -270,15 +404,18 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
         preserveAspectRatio={isExplorer ? "xMidYMid meet" : "xMidYMid meet"}
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        style={isExplorer ? { width: `${EXPLORER_RENDER_WIDTH_PX}px` } : undefined}
         className={cn(
           "philippines-map-svg transition-all duration-500 block mx-auto",
-          isExplorer ? "max-w-none h-auto" : "w-auto h-auto",
+          isExplorer ? "h-auto max-w-none" : "w-auto h-auto",
         )}
+        style={
+          isExplorer
+            ? { width: `${Math.round(EXPLORER_BASE_WIDTH_PX * fitZoom * (zoomLevel ?? 1) * DEFAULT_VISUAL_ZOOM_MULTIPLIER)}px` }
+            : undefined
+        }
       >
         <g>
           {places.map((place) => {
-            const isFocused = !focusedPlaceId || focusedPlaceId === place.id;
             const isSelected = selectedPlaceId === place.id;
             const isHovered = hoveredPlaceId === place.id;
             const baseFill = MAP_FILL;
@@ -302,11 +439,17 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
                 vectorEffect="non-scaling-stroke"
                 style={{
                   cursor: "pointer",
-                  opacity: isFocused ? 1 : 0,
-                  transition: "fill 220ms ease, opacity 260ms ease",
+                  transition: "fill 220ms ease",
                 }}
-                onMouseEnter={() => setHoveredPlaceId(place.id)}
-                onMouseLeave={() => setHoveredPlaceId(null)}
+                onMouseEnter={(event) => {
+                  setHoveredPlaceId(place.id);
+                  setTooltipFromPointer(event);
+                }}
+                onMouseMove={setTooltipFromPointer}
+                onMouseLeave={() => {
+                  setHoveredPlaceId(null);
+                  setTooltipPosition(null);
+                }}
                 onClick={() => handlePlaceClick(place)}
               />
             );
@@ -328,14 +471,30 @@ export const PhilippinesMap = ({ onRegionClick, className, id, variant = "defaul
       </svg>
 
       <AnimatePresence>
-        {hoveredPlaceId && (
+        {hoveredPlaceId && tooltipPosition && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2 rounded-full border border-black/10 bg-[#222] px-4 py-2 font-life-savers text-sm text-white shadow-xl"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            className="pointer-events-none absolute z-20 rounded-full border border-black/10 bg-[#222] px-4 py-2 font-life-savers text-sm text-white shadow-xl"
+            style={{
+              left: tooltipPosition.x,
+              top: tooltipPosition.y,
+            }}
           >
-            {places.find((p) => p.id === hoveredPlaceId)?.name}
+            {(() => {
+              const hovered = places.find((p) => p.id === hoveredPlaceId);
+              if (!hovered) return null;
+              return (
+                <div className="leading-tight">
+                  <div>{hovered.name}</div>
+                  <div className="text-[11px] text-white/75">Municipality: {hovered.name} • Province: {hovered.adm2Name} • Region: {hovered.adm1Name}</div>
+                  <div className="text-[10px] text-white/65">
+                    SQKM: {hovered.areaSqKm.toFixed(2)} | Area: {hovered.shapeArea.toFixed(2)} | Length: {hovered.shapeLength.toFixed(2)}
+                  </div>
+                </div>
+              );
+            })()}
           </motion.div>
         )}
       </AnimatePresence>
