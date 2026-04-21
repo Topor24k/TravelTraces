@@ -6,3 +6,4 @@ coverage/
 *.log
 .env*
 !.env.example
+src/Phl_admbnda/Phl_admbnda/phl_admbnda_adm3_psa_namria_20231106.shp
