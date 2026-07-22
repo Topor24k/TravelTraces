@@ -12,28 +12,12 @@ services:
       NOMINATIM_URL: https://nominatim.openstreetmap.org
       PHOTON_URL: https://photon.komoot.io
       REGION_HINT: Philippines
-      WS_SESSION_SECRET: ${WS_SESSION_SECRET:-replace-this-before-production}
-      WS_TOKEN_TTL_S: 3600
-      REDIS_URL: redis://redis:6379/0
-      AUTH_SECRET: ${AUTH_SECRET:-replace-this-before-production}
-      AUTH_COOKIE_SECURE: "true"
-      AUTH_TOKEN_TTL_S: 3600
-      REQUIRE_AUTH: ${REQUIRE_AUTH:-false}
-      BOOTSTRAP_USER_EMAIL: ${BOOTSTRAP_USER_EMAIL:-}
-      BOOTSTRAP_USER_ID: ${BOOTSTRAP_USER_ID:-}
-      BOOTSTRAP_USER_PASSWORD_HASH: ${BOOTSTRAP_USER_PASSWORD_HASH:-}
-      BOOTSTRAP_USER_GROUP_IDS: ${BOOTSTRAP_USER_GROUP_IDS:-}
       MAX_REQUEST_BYTES: 1048576
       CHAT_MODEL_URL: ${CHAT_MODEL_URL:-}
       CHAT_MODEL_API_KEY: ${CHAT_MODEL_API_KEY:-}
       CHAT_MODEL_TIMEOUT_S: ${CHAT_MODEL_TIMEOUT_S:-60}
     expose:
       - "8000"
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - api-data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()"]
@@ -43,23 +27,6 @@ services:
       start_period: 20s
     mem_limit: 512m
     cpus: 0.75
-    networks:
-      - internal
-
-  redis:
-    image: redis:7.2-alpine
-    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
-    expose:
-      - "6379"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    mem_limit: 160m
-    cpus: 0.25
     networks:
       - internal
 
@@ -84,9 +51,6 @@ services:
     networks:
       - edge
       - internal
-
-volumes:
-  api-data:
 
 networks:
   edge:

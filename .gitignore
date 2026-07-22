@@ -49,12 +49,6 @@ pnpm-debug.log*
 # Local data and generated runtime files
 backend/data/*.json
 backend/data/*.tmp
-backend/data/*.db
-backend/data/*.sqlite
-backend/data/*.sqlite3
-*.db
-*.sqlite
-*.sqlite3
 
 # OS and editor noise
 .DS_Store

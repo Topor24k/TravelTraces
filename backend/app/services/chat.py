@@ -5,7 +5,6 @@ from typing import Any
 
 import httpx
 
-from app.core.auth import RequestActor
 from app.core.config import settings
 from app.core.mapping import utc_now
 from app.models.chat import ChatMessage, ChatRequest, ChatResponse
@@ -44,14 +43,14 @@ def _response_from_payload(payload: dict[str, Any], conversation_id: str) -> Cha
         )
 
 
-async def request_chat_completion(payload: ChatRequest, actor: RequestActor) -> ChatResponse:
+async def request_chat_completion(payload: ChatRequest) -> ChatResponse:
     if not settings.chat_model_url:
         raise ChatModelUnavailableError("The Trace AI model connection is not configured.")
 
     conversation_id = payload.conversation_id or f"conversation-{uuid.uuid4()}"
     model_payload = payload.model_dump(mode="json")
     model_payload["conversation_id"] = conversation_id
-    model_payload["owner_id"] = actor.user_id if actor.authenticated and actor.user_id else payload.owner_id
+    model_payload["owner_id"] = payload.owner_id
 
     headers = {"Content-Type": "application/json"}
     if settings.chat_model_api_key:

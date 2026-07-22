@@ -21,6 +21,8 @@ export const localDbTables = {
   pinPhotos: `${LOCAL_DB_PREFIX}.pin_photos`,
   routes: `${LOCAL_DB_PREFIX}.routes`,
   routePoints: `${LOCAL_DB_PREFIX}.route_points`,
+  trackingSessions: `${LOCAL_DB_PREFIX}.tracking_sessions`,
+  meetupRequests: `${LOCAL_DB_PREFIX}.meetup_requests`,
   travelPlanStories: `${LOCAL_DB_PREFIX}.travel_plan_stories`,
   travelPlanDestinations: `${LOCAL_DB_PREFIX}.travel_plan_destinations`,
   travelPlanDestinationDocuments: `${LOCAL_DB_PREFIX}.travel_plan_destination_documents`,
@@ -30,6 +32,9 @@ export const localDbTables = {
   userCalendarItems: `${LOCAL_DB_PREFIX}.user_calendar_items`,
   travelGroups: `${LOCAL_DB_PREFIX}.travel_groups`,
   travelGroupMembers: `${LOCAL_DB_PREFIX}.travel_group_members`,
+  circleInvites: `${LOCAL_DB_PREFIX}.circle_invites`,
+  savedPlaces: `${LOCAL_DB_PREFIX}.saved_places`,
+  trackedDevices: `${LOCAL_DB_PREFIX}.tracked_devices`,
   events: `${LOCAL_DB_PREFIX}.events`,
   eventParticipants: `${LOCAL_DB_PREFIX}.event_participants`,
   conversations: `${LOCAL_DB_PREFIX}.conversations`,
@@ -37,11 +42,55 @@ export const localDbTables = {
   travelCollections: `${LOCAL_DB_PREFIX}.travel_collections`,
   savedTouristSpots: `${LOCAL_DB_PREFIX}.saved_tourist_spots`,
   memberLocations: `${LOCAL_DB_PREFIX}.member_locations`,
+  circleEvents: `${LOCAL_DB_PREFIX}.circle_events`,
+  notificationPreferences: `${LOCAL_DB_PREFIX}.notification_preferences`,
   todayAgendas: `${LOCAL_DB_PREFIX}.today_agendas`,
   auditLog: `${LOCAL_DB_PREFIX}.audit_log`,
 } as const;
 
 export type LocalDbTable = keyof typeof localDbTables;
+
+export const localDbmlTables = {
+  users: "users",
+  authSessions: "auth_sessions",
+  explorePlaces: "explore_places",
+  stories: "stories",
+  storyPhotos: "story_photos",
+  storyComments: "story_comments",
+  storyLikes: "story_likes",
+  savedStories: "saved_stories",
+  storyCollections: "story_collections",
+  userMaps: "user_maps",
+  pins: "pins",
+  pinPhotos: "pin_photos",
+  routes: "routes",
+  routePoints: "route_points",
+  trackingSessions: "tracking_sessions",
+  meetupRequests: "meetup_requests",
+  travelPlanStories: "travel_plan_stories",
+  travelPlanDestinations: "travel_plan_destinations",
+  travelPlanDestinationDocuments: "travel_plan_destination_documents",
+  travelPlanAlbums: "travel_plan_albums",
+  travelPlanComments: "travel_plan_comments",
+  savedTravelPlans: "saved_travel_plans",
+  userCalendarItems: "user_calendar_items",
+  travelGroups: "travel_groups",
+  travelGroupMembers: "travel_group_members",
+  circleInvites: "circle_invites",
+  savedPlaces: "saved_places",
+  trackedDevices: "tracked_devices",
+  events: "events",
+  eventParticipants: "event_participants",
+  conversations: "conversations",
+  messages: "messages",
+  travelCollections: "travel_collections",
+  savedTouristSpots: "saved_tourist_spots",
+  memberLocations: "member_locations",
+  circleEvents: "circle_events",
+  notificationPreferences: "notification_preferences",
+  todayAgendas: "today_agendas",
+  auditLog: "audit_log",
+} as const satisfies Record<LocalDbTable, string>;
 
 export type LocalStoryRecord = {
   id: number;
@@ -180,6 +229,67 @@ export function upsertLocalRow<T>(table: LocalDbTable, row: T, getId: (item: T) 
 export function deleteLocalRows<T>(table: LocalDbTable, predicate: (item: T) => boolean) {
   const next = readLocalTable<T>(table).filter((item) => !predicate(item));
   writeLocalTable(table, next);
+}
+
+export function deleteLocalUserData(userId: string): Record<string, number> {
+  const value = (row: Record<string, unknown>, ...keys: string[]) => {
+    const found = keys.map((key) => row[key]).find((item) => item != null);
+    return found == null ? "" : String(found);
+  };
+  const storyIds = new Set(readLocalTable<Record<string, unknown>>("stories").filter((row) => value(row, "ownerId", "owner_id") === userId).map((row) => value(row, "id", "story_id")));
+  const planIds = new Set(readLocalTable<Record<string, unknown>>("travelPlanStories").filter((row) => value(row, "ownerId", "owner_id") === userId).map((row) => value(row, "id", "travel_plan_id")));
+  const eventIds = new Set(readLocalTable<Record<string, unknown>>("events").filter((row) => value(row, "organizerId", "organizer_id", "ownerId") === userId).map((row) => value(row, "eventId", "event_id", "id")));
+  const groupIds = new Set(readLocalTable<Record<string, unknown>>("travelGroups").filter((row) => value(row, "owner_id", "ownerId") === userId).map((row) => value(row, "circle_id", "group_id", "id")));
+  const predicates: Partial<Record<LocalDbTable, (row: Record<string, unknown>) => boolean>> = {
+    users: (row) => value(row, "id", "user_id") === userId,
+    authSessions: (row) => value(row, "user_id") === userId,
+    stories: (row) => value(row, "ownerId", "owner_id") === userId,
+    storyPhotos: (row) => storyIds.has(value(row, "storyId", "story_id")),
+    storyComments: (row) => value(row, "userId", "user_id") === userId || storyIds.has(value(row, "storyId", "story_id")),
+    storyLikes: (row) => value(row, "userId", "user_id") === userId || storyIds.has(value(row, "storyId", "story_id")),
+    savedStories: (row) => value(row, "userId", "user_id", "saved_by") === userId || storyIds.has(value(row, "storyId", "story_id")),
+    userMaps: (row) => value(row, "owner_id", "creator_id") === userId,
+    pins: (row) => value(row, "creator_id") === userId,
+    routes: (row) => value(row, "creator_id") === userId,
+    trackingSessions: (row) => value(row, "creator_id", "user_id") === userId,
+    meetupRequests: (row) => value(row, "creator_id") === userId,
+    travelPlanStories: (row) => value(row, "ownerId", "owner_id") === userId,
+    travelPlanDestinations: (row) => planIds.has(value(row, "travelPlanId", "travel_plan_id")),
+    travelPlanDestinationDocuments: (row) => value(row, "ownerId", "owner_id") === userId || planIds.has(value(row, "travelPlanId", "travel_plan_id")),
+    travelPlanAlbums: (row) => planIds.has(value(row, "travelPlanId", "travel_plan_id")),
+    travelPlanComments: (row) => value(row, "userId", "user_id") === userId || planIds.has(value(row, "travelPlanId", "travel_plan_id")),
+    savedTravelPlans: (row) => value(row, "userId", "user_id", "owner_id") === userId || planIds.has(value(row, "travelPlanId", "travel_plan_id")),
+    userCalendarItems: (row) => value(row, "userId", "user_id", "ownerId") === userId,
+    travelGroups: (row) => groupIds.has(value(row, "circle_id", "group_id", "id")),
+    travelGroupMembers: (row) => value(row, "userId", "user_id") === userId || groupIds.has(value(row, "circle_id", "group_id")),
+    circleInvites: (row) => value(row, "created_by") === userId || groupIds.has(value(row, "circle_id")),
+    savedPlaces: (row) => value(row, "creator_id") === userId || groupIds.has(value(row, "circle_id")),
+    trackedDevices: (row) => value(row, "owner_id") === userId || groupIds.has(value(row, "circle_id")),
+    events: (row) => value(row, "organizerId", "organizer_id", "ownerId") === userId,
+    eventParticipants: (row) => value(row, "userId", "user_id") === userId || eventIds.has(value(row, "eventId", "event_id")),
+    conversations: (row) => value(row, "ownerId", "owner_id") === userId,
+    messages: (row) => value(row, "ownerId", "owner_id", "senderId", "sender_id") === userId,
+    travelCollections: (row) => value(row, "owner_id", "ownerId") === userId,
+    savedTouristSpots: (row) => value(row, "saved_by", "owner_id", "user_id") === userId,
+    memberLocations: (row) => value(row, "user_id") === userId || groupIds.has(value(row, "circle_id")),
+    circleEvents: (row) => value(row, "user_id") === userId || groupIds.has(value(row, "circle_id")),
+    notificationPreferences: (row) => value(row, "user_id") === userId,
+    todayAgendas: (row) => value(row, "ownerId", "owner_id") === userId,
+    auditLog: (row) => value(row, "actorId", "actor_id") === userId,
+  };
+  const deletedCounts: Record<string, number> = {};
+  for (const [table, predicate] of Object.entries(predicates) as Array<[LocalDbTable, (row: Record<string, unknown>) => boolean]>) {
+    const rows = readLocalTable<Record<string, unknown>>(table);
+    const next = rows.filter((row) => !predicate(row));
+    if (next.length !== rows.length) {
+      deletedCounts[localDbmlTables[table]] = rows.length - next.length;
+      writeLocalTable(table, next);
+    }
+  }
+  for (const key of Object.keys(window.localStorage)) {
+    if (key.startsWith(`traveltraces:user:${userId}:`)) window.localStorage.removeItem(key);
+  }
+  return deletedCounts;
 }
 
 export function migrateLegacyLocalStorage() {

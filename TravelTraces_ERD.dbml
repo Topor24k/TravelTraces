@@ -1,6 +1,6 @@
 Project TravelTraces {
   database_type: "PostgreSQL"
-  Note: "Corrected ERD for TravelTraces based on the current website: authentication/session state, signup category preferences, public and owner-safe profiles, explore places, stories, map pins, Today's Agenda 24-hour map status, Draw Route travel plan drafts, published travel plan stories, calendar items, saved story/place collections, groups, events, social chat, Trace AI conversations, badges, albums, localStorage prototype tables, and account deletion/audit flows."
+  Note: "Canonical TravelTraces domain model. The current prototype persists application records in DBML-aligned, versioned browser localStorage tables; uploaded media may use browser media storage to avoid localStorage quota limits. SQLite is not used. The backend remains stateless for Trace AI, geocoding, routing, and meetup calculations. PostgreSQL is the future deployment target only."
 }
 
 Enum user_role {
@@ -1134,10 +1134,10 @@ Table local_storage_tables {
   dbml_table_name varchar [not null]
   purpose text [not null]
   browser_storage_key varchar [not null, unique]
-  mirrors_backend_table boolean [not null, default: true]
+  mirrors_backend_table boolean [not null, default: false]
   created_at timestamp
   updated_at timestamp
-  Note: "Prototype-only map of DBML tables to localStorage keys. This lets the frontend test all flows locally before PostgreSQL is connected."
+  Note: "Prototype-only map of canonical DBML tables to versioned localStorage keys. These records are browser-owned and do not mirror a SQLite or other backend database."
 }
 
 Ref: user_follows.follower_id > users.user_id [delete: cascade]

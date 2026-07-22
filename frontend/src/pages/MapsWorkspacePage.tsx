@@ -1065,7 +1065,7 @@ function MapsWorkspaceContent() {
       setActiveMap(null);
       return;
     }
-    void getDefaultMap()
+    void getDefaultMap(viewerId)
       .then((map) => setActiveMap(map))
       .catch(() => undefined);
   }, [isAuthenticated, viewerId]);

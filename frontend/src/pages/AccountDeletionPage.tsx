@@ -17,7 +17,7 @@ function AccountDeletionContent() {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const canDelete = password.length >= 12 && confirmation === "Delete My Account" && armed;
+  const canDelete = password.length >= 8 && confirmation === "Delete My Account" && armed;
 
   const handleDelete = async () => {
     if (!canDelete) return;

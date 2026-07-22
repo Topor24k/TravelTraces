@@ -115,10 +115,7 @@ set "API_CMD=%TEMP%\travelplaces-api-%RANDOM%-%RANDOM%.cmd"
 > "%API_CMD%" echo @echo off
 >> "%API_CMD%" echo cd /d "%BACKEND%"
 >> "%API_CMD%" echo set APP_ENV=local
->> "%API_CMD%" echo set REQUIRE_AUTH=false
->> "%API_CMD%" echo set AUTH_COOKIE_SECURE=false
 >> "%API_CMD%" echo set API_CORS_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
->> "%API_CMD%" echo set TRAVELPLACES_DB_PATH=%BACKEND%\data\TravelPlaces.db
 >> "%API_CMD%" echo "%PYTHON_EXE%" -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 echo Starting API...
 start "TravelPlaces API" cmd /k "%API_CMD%"

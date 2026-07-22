@@ -13,14 +13,15 @@ import {
   MapScope,
   RouteEngine,
   TrackingSession,
-  buildTrackingSocketUrl,
   buildDrivingRoute,
   createPin,
   createTrackingSession,
   listPins,
   listRoutes,
+  publishTrackingLocation,
   reverseLocation,
   searchLocations,
+  subscribeTrackingLocation,
 } from "../../services/mappingApi";
 
 type LayerKey = "standard" | "satellite" | "municipal";
@@ -373,7 +374,7 @@ function TelemetryPanel({
       </button>
       <div className="mt-3 rounded bg-[#F5F0E8] p-3 text-xs text-[#6B6B5A]">
         <span className="block font-[var(--font-label)] font-semibold uppercase tracking-[0.08em] text-[#3A2A22]">
-          {connected ? "Signed session active" : "No active socket"}
+          {connected ? "Local sharing active" : "No active session"}
         </span>
         <span className="mt-1 block break-all">{session?.session_id ?? "Create a scoped session from the current route or map state."}</span>
       </div>
@@ -385,7 +386,7 @@ export function LayerMapInterface() {
   const { user } = useAuth();
   const viewerId = user?.id ?? "demo-user";
   const viewerGroups = DEFAULT_GROUP_IDS;
-  const socketRef = useRef<WebSocket | null>(null);
+  const trackingUnsubscribeRef = useRef<(() => void) | null>(null);
 
   const [activeLayer, setActiveLayer] = useState<LayerKey>("standard");
   const [boundaries, setBoundaries] = useState<FeatureCollection | null>(null);
@@ -427,8 +428,8 @@ export function LayerMapInterface() {
 
   useEffect(() => {
     return () => {
-      socketRef.current?.close();
-      socketRef.current = null;
+      trackingUnsubscribeRef.current?.();
+      trackingUnsubscribeRef.current = null;
     };
   }, []);
 
@@ -523,8 +524,8 @@ export function LayerMapInterface() {
   };
 
   const stopTelemetry = useCallback(() => {
-    socketRef.current?.close();
-    socketRef.current = null;
+    trackingUnsubscribeRef.current?.();
+    trackingUnsubscribeRef.current = null;
     setTelemetryConnected(false);
   }, []);
 
@@ -541,25 +542,11 @@ export function LayerMapInterface() {
         groupIds: scopedGroupIds,
       });
       setTrackingSession(session);
-      const socket = new WebSocket(buildTrackingSocketUrl(session));
-      socketRef.current = socket;
-      socket.onopen = () => setTelemetryConnected(true);
-      socket.onclose = () => setTelemetryConnected(false);
-      socket.onerror = () => setStatus("Telemetry socket connection failed.");
-      socket.onmessage = (message) => {
-        const event = JSON.parse(message.data);
-        if (event.type === "location.updated" && event.data?.current) {
-          const [lat, lon] = event.data.current as [number, number];
-          setRemotePoints((current) => ({
-            ...current,
-            [event.data.user_id as string]: {
-              lat,
-              lon,
-              updatedAt: event.data.updated_at as string,
-            },
-          }));
-        }
-      };
+      trackingUnsubscribeRef.current = subscribeTrackingLocation(session.session_id, (update) => {
+        const [lat, lon] = update.current;
+        setRemotePoints((current) => ({ ...current, [update.user_id]: { lat, lon, updatedAt: update.updated_at } }));
+      });
+      setTelemetryConnected(true);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Telemetry session could not be started.");
     } finally {
@@ -567,25 +554,22 @@ export function LayerMapInterface() {
     }
   };
 
-  const publishTelemetry = () => {
-    const socket = socketRef.current;
+  const publishTelemetry = async () => {
     const location = gpsLocation ?? selectedLocation;
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      setStatus("Telemetry socket is not connected.");
+    if (!trackingSession || !telemetryConnected) {
+      setStatus("Start a local sharing session first.");
       return;
     }
     if (!location) {
       setStatus("Select a place or use GPS before publishing telemetry.");
       return;
     }
-    socket.send(
-      JSON.stringify({
-        type: "location.update",
-        lat: location.coordinate[0],
-        lon: location.coordinate[1],
-        accuracy_m: location.provider === "navigator" ? 15 : null,
-      }),
-    );
+    await publishTrackingLocation(trackingSession.session_id, {
+      user_id: viewerId,
+      current: location.coordinate,
+      accuracy_m: location.provider === "navigator" ? 15 : null,
+    });
+    setStatus("Position shared with this browser session.");
   };
 
   return (

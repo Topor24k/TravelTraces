@@ -7,11 +7,8 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.core.security_headers import security_middleware
-from app.routers.auth import router as auth_router
 from app.routers.chat import router as chat_router
-from app.routers.circles import router as circles_router
-from app.routers.mapping import router as mapping_router
-from app.routers.telemetry import router as telemetry_router
+from app.routers.mapping_stateless import router as mapping_router
 
 
 def create_app() -> FastAPI:
@@ -52,11 +49,8 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok", "service": settings.app_name, "environment": settings.app_env}
 
-    app.include_router(auth_router)
     app.include_router(chat_router)
-    app.include_router(circles_router)
     app.include_router(mapping_router)
-    app.include_router(telemetry_router)
     return app
 
 

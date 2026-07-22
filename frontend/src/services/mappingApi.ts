@@ -149,6 +149,14 @@ export type TrackingSession = {
   token: string;
   token_expires_at: number;
   ws_path: string;
+  last_location?: TrackingLocationUpdate | null;
+};
+
+export type TrackingLocationUpdate = {
+  user_id: string;
+  current: [number, number];
+  accuracy_m: number | null;
+  updated_at: string;
 };
 
 export type TravelGroupMember = {
@@ -252,7 +260,9 @@ export type TouristSpot = {
 };
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-const USE_LOCAL_DB = !API_BASE_URL;
+// Application records are browser-owned during the prototype phase. The API is
+// reserved for stateless services such as AI, geocoding, routing, and meetup math.
+const USE_LOCAL_DB = true;
 const MAPTILER_KEY = (import.meta.env.VITE_MAPTILER_KEY || "OxFhSEPyrURM6Iii2vm0").trim();
 const reverseLocationCache = new Map<string, ApiLocation>();
 const reverseLocationPending = new Map<string, Promise<ApiLocation>>();
@@ -558,10 +568,10 @@ export async function listPublicUserMaps(ownerId?: string): Promise<UserMap[]> {
   return data.maps;
 }
 
-export async function getDefaultMap(): Promise<UserMap> {
+export async function getDefaultMap(ownerId = "demo-user"): Promise<UserMap> {
   if (USE_LOCAL_DB) {
     const { ensureLocalDefaultMap } = await localDb();
-    return ensureLocalDefaultMap("demo-user");
+    return ensureLocalDefaultMap(ownerId);
   }
   return requestJson<UserMap>("/api/maps/default");
 }
@@ -764,8 +774,31 @@ export async function joinTravelGroup(input: {
   avatar?: string;
 }): Promise<TravelGroup> {
   if (USE_LOCAL_DB) {
-    const groups = (await localDb()).readLocalTable<TravelGroup>("travelGroups");
-    return groups[0] ?? createTravelGroup({ name: "Local Travel Group", ownerId: input.userId, displayName: input.displayName, role: input.role, phone: input.phone, avatar: input.avatar });
+    const { readLocalTable, writeLocalTable } = await localDb();
+    const invite = readLocalTable<TravelGroupInvite>("circleInvites").find((row) => row.code.toUpperCase() === input.inviteCode.toUpperCase() && new Date(row.expires_at).getTime() > Date.now());
+    if (!invite) throw new ApiRequestError("Invite code is invalid or expired.", 404);
+    const groups = readLocalTable<TravelGroup>("travelGroups");
+    const target = groups.find((group) => group.circle_id === invite.circle_id);
+    if (!target) throw new ApiRequestError("Travel group was not found.", 404);
+    const now = new Date().toISOString();
+    const member: TravelGroupMember = {
+      user_id: input.userId,
+      display_name: input.displayName ?? input.userId,
+      role: input.role ?? "Traveler",
+      phone: input.phone ?? "",
+      avatar: input.avatar ?? "",
+      admin: false,
+      location_sharing_enabled: true,
+      joined_at: now,
+    };
+    const joined = {
+      ...target,
+      members: [...target.members.filter((row) => row.user_id !== input.userId), member],
+      updated_at: now,
+    };
+    writeLocalTable<TravelGroup>("travelGroups", groups.map((group) => group.circle_id === joined.circle_id ? joined : group));
+    writeLocalTable<TravelGroupInvite>("circleInvites", readLocalTable<TravelGroupInvite>("circleInvites").map((row) => row.invite_id === invite.invite_id ? { ...row, uses: row.uses + 1 } : row));
+    return joined;
   }
   return requestJson<TravelGroup>("/api/travel-groups/join", {
     method: "POST",
@@ -782,15 +815,17 @@ export async function joinTravelGroup(input: {
 
 export async function createTravelGroupInvite(groupId: string): Promise<TravelGroupInvite> {
   if (USE_LOCAL_DB) {
-    return {
+    const { upsertLocalRow } = await localDb();
+    const invite: TravelGroupInvite = {
       invite_id: `local-invite-${Date.now()}`,
       circle_id: groupId,
-      code: `LOCAL-${Date.now()}`,
+      code: `TT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
       created_by: "demo-user",
       created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      expires_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
       uses: 0,
     };
+    return upsertLocalRow("circleInvites", invite, (row) => row.invite_id);
   }
   return requestJson<TravelGroupInvite>(`/api/travel-groups/${groupId}/invite`, { method: "POST" });
 }
@@ -843,7 +878,10 @@ export async function leaveTravelGroup(groupId: string, memberId: string): Promi
 }
 
 export async function listTravelCheckpoints(groupId: string): Promise<TravelCheckpoint[]> {
-  if (USE_LOCAL_DB) return [];
+  if (USE_LOCAL_DB) {
+    const { readLocalTable } = await localDb();
+    return readLocalTable<TravelCheckpoint>("savedPlaces").filter((place) => place.circle_id === groupId);
+  }
   const data = await requestJson<{ places: TravelCheckpoint[] }>(`/api/travel-groups/${groupId}/places`);
   return data.places;
 }
@@ -858,7 +896,8 @@ export async function createTravelCheckpoint(input: {
   radiusM?: number;
 }): Promise<TravelCheckpoint> {
   if (USE_LOCAL_DB) {
-    return {
+    const { upsertLocalRow } = await localDb();
+    const checkpoint: TravelCheckpoint = {
       place_id: `local-checkpoint-${Date.now()}`,
       circle_id: input.groupId,
       creator_id: input.creatorId,
@@ -869,6 +908,7 @@ export async function createTravelCheckpoint(input: {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+    return upsertLocalRow("savedPlaces", checkpoint, (row) => row.place_id);
   }
   return requestJson<TravelCheckpoint>(`/api/travel-groups/${input.groupId}/places`, {
     method: "POST",
@@ -946,7 +986,7 @@ export async function checkInTravelGroup(input: {
   eventId?: string | null;
 }): Promise<TravelGroupLocation> {
   if (USE_LOCAL_DB) {
-    return updateTravelGroupLocation({
+    const location = await updateTravelGroupLocation({
       groupId: input.groupId,
       userId: input.userId,
       lat: input.lat,
@@ -956,6 +996,19 @@ export async function checkInTravelGroup(input: {
       visibilityScope: input.visibilityScope,
       eventId: input.eventId,
     });
+    const { upsertLocalRow } = await localDb();
+    const event: TravelNotification = {
+      event_id: `local-event-${Date.now()}`,
+      circle_id: input.groupId,
+      user_id: input.userId,
+      type: "check_in",
+      place_id: null,
+      message: "A traveler checked in with the group.",
+      read_by: [input.userId],
+      created_at: new Date().toISOString(),
+    };
+    upsertLocalRow("circleEvents", event, (row) => row.event_id);
+    return location;
   }
   return requestJson<TravelGroupLocation>(`/api/travel-groups/${input.groupId}/check-in`, {
     method: "POST",
@@ -973,34 +1026,53 @@ export async function checkInTravelGroup(input: {
 }
 
 export async function listTravelNotifications(groupId: string): Promise<TravelNotification[]> {
-  if (USE_LOCAL_DB) return [];
+  if (USE_LOCAL_DB) {
+    const { readLocalTable } = await localDb();
+    return readLocalTable<TravelNotification>("circleEvents").filter((event) => event.circle_id === groupId);
+  }
   const data = await requestJson<{ events: TravelNotification[] }>(`/api/travel-groups/${groupId}/events`);
   return data.events;
 }
 
 export async function markTravelNotificationRead(groupId: string, eventId: string, viewerId: string): Promise<TravelNotification> {
   if (USE_LOCAL_DB) {
-    return { event_id: eventId, circle_id: groupId, user_id: viewerId, type: "system", place_id: null, message: "Read locally", read_by: [viewerId], created_at: new Date().toISOString() };
+    const { readLocalTable, writeLocalTable } = await localDb();
+    const events = readLocalTable<TravelNotification>("circleEvents");
+    const event = events.find((row) => row.circle_id === groupId && row.event_id === eventId);
+    if (!event) throw new ApiRequestError("Notification was not found.", 404);
+    const updated = { ...event, read_by: Array.from(new Set([...event.read_by, viewerId])) };
+    writeLocalTable<TravelNotification>("circleEvents", events.map((row) => row.event_id === eventId ? updated : row));
+    return updated;
   }
   const params = new URLSearchParams({ viewer_id: viewerId });
   return requestJson<TravelNotification>(`/api/travel-groups/${groupId}/events/${eventId}/read?${params}`, { method: "PATCH" });
 }
 
 export async function deleteTravelNotification(groupId: string, eventId: string, viewerId: string): Promise<void> {
-  if (USE_LOCAL_DB) return;
+  if (USE_LOCAL_DB) {
+    const { deleteLocalRows } = await localDb();
+    deleteLocalRows<TravelNotification>("circleEvents", (event) => event.circle_id === groupId && event.event_id === eventId && (event.user_id === viewerId || event.read_by.includes(viewerId)));
+    return;
+  }
   const params = new URLSearchParams({ viewer_id: viewerId });
   await requestJson<{ status: string }>(`/api/travel-groups/${groupId}/events/${eventId}?${params}`, { method: "DELETE" });
 }
 
 export async function getNotificationPreferences(userId: string): Promise<NotificationPreferences> {
   if (USE_LOCAL_DB) {
-    return { user_id: userId, meetup_arrivals: true, destination_arrivals: true, check_ins: true, checkpoints: true, group_ride_start: true, event_arrivals: true };
+    const { readLocalTable, upsertLocalRow } = await localDb();
+    const existing = readLocalTable<NotificationPreferences>("notificationPreferences").find((row) => row.user_id === userId);
+    if (existing) return existing;
+    return upsertLocalRow("notificationPreferences", { user_id: userId, meetup_arrivals: true, destination_arrivals: true, check_ins: true, checkpoints: true, group_ride_start: true, event_arrivals: true }, (row) => row.user_id);
   }
   return requestJson<NotificationPreferences>(`/api/travel-groups/notification-preferences/${encodeURIComponent(userId)}`);
 }
 
 export async function updateNotificationPreferences(input: NotificationPreferences): Promise<NotificationPreferences> {
-  if (USE_LOCAL_DB) return input;
+  if (USE_LOCAL_DB) {
+    const { upsertLocalRow } = await localDb();
+    return upsertLocalRow("notificationPreferences", input, (row) => row.user_id);
+  }
   return requestJson<NotificationPreferences>(`/api/travel-groups/notification-preferences/${encodeURIComponent(input.user_id)}`, {
     method: "PATCH",
     body: JSON.stringify(input),
@@ -1133,7 +1205,8 @@ export async function createTrackingSession(input: {
   groupIds: string[];
 }): Promise<TrackingSession> {
   if (USE_LOCAL_DB) {
-    return {
+    const { upsertLocalRow } = await localDb();
+    const session: TrackingSession = {
       session_id: input.sessionId ?? `local-tracking-${Date.now()}`,
       route_id: input.routeId ?? null,
       scope: input.scope,
@@ -1143,6 +1216,7 @@ export async function createTrackingSession(input: {
       token_expires_at: Date.now() + 60 * 60 * 1000,
       ws_path: "/local-tracking",
     };
+    return upsertLocalRow("trackingSessions", session, (row) => row.session_id);
   }
   return requestJson<TrackingSession>("/api/tracking/sessions", {
     method: "POST",
@@ -1154,6 +1228,43 @@ export async function createTrackingSession(input: {
       group_ids: input.groupIds,
     }),
   });
+}
+
+export async function publishTrackingLocation(
+  sessionId: string,
+  update: Omit<TrackingLocationUpdate, "updated_at">,
+): Promise<TrackingLocationUpdate> {
+  const { readLocalTable, writeLocalTable } = await localDb();
+  const sessions = readLocalTable<TrackingSession>("trackingSessions");
+  const session = sessions.find((row) => row.session_id === sessionId);
+  if (!session) throw new ApiRequestError("Tracking session was not found.", 404);
+  const nextUpdate: TrackingLocationUpdate = { ...update, updated_at: new Date().toISOString() };
+  writeLocalTable<TrackingSession>("trackingSessions", sessions.map((row) => row.session_id === sessionId ? { ...row, last_location: nextUpdate } : row));
+  window.dispatchEvent(new CustomEvent("traveltraces:tracking-location", { detail: { sessionId, update: nextUpdate } }));
+  return nextUpdate;
+}
+
+export function subscribeTrackingLocation(sessionId: string, callback: (update: TrackingLocationUpdate) => void) {
+  const readLatest = () => {
+    void localDb().then(({ readLocalTable }) => {
+      const latest = readLocalTable<TrackingSession>("trackingSessions").find((row) => row.session_id === sessionId)?.last_location;
+      if (latest) callback(latest);
+    });
+  };
+  const localHandler = (event: Event) => {
+    const detail = (event as CustomEvent<{ sessionId?: string; update?: TrackingLocationUpdate }>).detail;
+    if (detail?.sessionId === sessionId && detail.update) callback(detail.update);
+  };
+  const storageHandler = (event: StorageEvent) => {
+    if (event.key?.endsWith(".tracking_sessions")) readLatest();
+  };
+  window.addEventListener("traveltraces:tracking-location", localHandler);
+  window.addEventListener("storage", storageHandler);
+  readLatest();
+  return () => {
+    window.removeEventListener("traveltraces:tracking-location", localHandler);
+    window.removeEventListener("storage", storageHandler);
+  };
 }
 
 export function buildTrackingSocketUrl(session: TrackingSession): string {

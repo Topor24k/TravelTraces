@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 
-from app.core.auth import RequestActor, get_request_actor
 from app.models.chat import ChatRequest, ChatResponse
 from app.services.chat import (
     ChatModelResponseError,
@@ -16,9 +15,9 @@ router = APIRouter(prefix="/api", tags=["chat"])
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(payload: ChatRequest, actor: RequestActor = Depends(get_request_actor)) -> ChatResponse:
+async def chat(payload: ChatRequest) -> ChatResponse:
     try:
-        return await request_chat_completion(payload, actor)
+        return await request_chat_completion(payload)
     except ChatModelUnavailableError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
